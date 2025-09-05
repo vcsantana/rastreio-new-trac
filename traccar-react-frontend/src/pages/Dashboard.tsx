@@ -43,14 +43,14 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
         boxShadow: '0 12px 40px rgba(0, 0, 0, 0.25)',
       }
     }}>
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <CardContent sx={{ p: 1.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Box
             sx={{
               backgroundColor: color,
               borderRadius: '50%',
-              width: 56,
-              height: 56,
+              width: 40,
+              height: 40,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -61,10 +61,10 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
             {icon}
           </Box>
           <Box>
-            <Typography variant="h4" component="div" fontWeight="bold" color="rgba(0, 0, 0, 0.87)">
+            <Typography variant="h6" component="div" fontWeight="bold" color="rgba(0, 0, 0, 0.87)">
               {value}
             </Typography>
-            <Typography variant="body2" color="rgba(0, 0, 0, 0.6)" fontWeight="medium">
+            <Typography variant="caption" color="rgba(0, 0, 0, 0.6)" fontWeight="medium">
               {title}
             </Typography>
           </Box>
@@ -235,34 +235,10 @@ const Dashboard: React.FC = () => {
         )}
       </Box>
 
-      {/* Dashboard Title - Overlay */}
-      <Box sx={{ 
-        position: 'absolute', 
-        top: 20, 
-        left: 20, 
-        zIndex: 10 
-      }}>
-        <Typography 
-          variant="h3" 
-          component="h1" 
-          sx={{ 
-            color: 'white',
-            fontWeight: 'bold',
-            textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
-            background: 'rgba(0, 0, 0, 0.2)',
-            padding: '8px 16px',
-            borderRadius: '8px',
-            backdropFilter: 'blur(10px)'
-          }}
-        >
-          Dashboard
-        </Typography>
-      </Box>
-
       {/* Statistics Cards - Overlay */}
       <Box sx={{ 
         position: 'absolute', 
-        top: 100, 
+        top: 10, 
         left: 20, 
         right: 20, 
         zIndex: 10 
