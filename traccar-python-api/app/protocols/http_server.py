@@ -85,7 +85,9 @@ class HTTPProtocolServer:
             # Process position data
             position_data = await self.protocol_handler.create_position(message)
             if position_data:
-                await self._save_position(message.device_id, position_data)
+                success = await self._save_position(message.device_id, position_data, client_address)
+                if not success:
+                    return web.Response(status=404, text="Device not found")
             
             # Process events
             events = await self.protocol_handler.create_events(message)
@@ -193,7 +195,7 @@ class HTTPProtocolServer:
             logger.error("Failed to parse HTTP request", error=str(e))
             return None
     
-    async def _save_position(self, device_id: str, position_data: Dict[str, Any]):
+    async def _save_position(self, device_id: str, position_data: Dict[str, Any], client_address: Tuple[str, int]):
         """Save position data to database"""
         db = None
         try:
@@ -209,7 +211,7 @@ class HTTPProtocolServer:
                 logger.warning("Device not found", device_id=device_id)
                 # Track unknown device
                 await self._track_unknown_device(db, device_id, client_address)
-                return
+                return False  # Indicate that device was not found
             
             # Create position
             position_create = PositionCreate(**position_data)
@@ -233,6 +235,8 @@ class HTTPProtocolServer:
             
             # Broadcast via WebSocket
             await websocket_service.broadcast_position(position)
+            
+            return True  # Indicate success
             
         except Exception as e:
             logger.error("Failed to save position", error=str(e), device_id=device_id)
