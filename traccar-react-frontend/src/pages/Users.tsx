@@ -72,6 +72,7 @@ const Users: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'user'>('all');
+  const [actionLoading, setActionLoading] = useState(false);
 
   // Form states
   const [formData, setFormData] = useState<UserCreate>({
@@ -101,35 +102,55 @@ const Users: React.FC = () => {
   };
 
   const handleCreateUser = async () => {
-    const success = await createUser(formData);
-    if (success) {
-      setCreateDialogOpen(false);
-      setFormData({
-        email: '',
-        name: '',
-        password: '',
-        is_active: true,
-        is_admin: false,
-        device_limit: -1,
-        user_limit: 0,
-      });
-      loadData();
+    // Validate required fields
+    if (!formData.email || !formData.name || !formData.password) {
+      setError('Please fill in all required fields');
+      return;
+    }
+    
+    setActionLoading(true);
+    setError(null);
+    
+    try {
+      const newUser = await createUser(formData);
+      if (newUser) {
+        setCreateDialogOpen(false);
+        setFormData({
+          email: '',
+          name: '',
+          password: '',
+          is_active: true,
+          is_admin: false,
+          device_limit: -1,
+          user_limit: 0,
+        });
+        loadData();
+      }
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const handleUpdateUser = async () => {
     if (!selectedUser) return;
     
-    const updateData: UserUpdate = {
-      ...formData,
-      password: formData.password || undefined,
-    };
+    setActionLoading(true);
+    setError(null);
     
-    const success = await updateUser(selectedUser.id, updateData);
-    if (success) {
-      setEditDialogOpen(false);
-      setSelectedUser(null);
-      loadData();
+    try {
+      const updateData: UserUpdate = {
+        ...formData,
+        password: formData.password || undefined,
+      };
+      
+      const updatedUser = await updateUser(selectedUser.id, updateData);
+      if (updatedUser) {
+        setEditDialogOpen(false);
+        setSelectedUser(null);
+        loadData();
+      }
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -527,9 +548,16 @@ const Users: React.FC = () => {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleCreateUser} variant="contained">
-            Create User
+          <Button onClick={() => setCreateDialogOpen(false)} disabled={actionLoading}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleCreateUser} 
+            variant="contained" 
+            disabled={actionLoading}
+            startIcon={actionLoading ? <CircularProgress size={20} /> : null}
+          >
+            {actionLoading ? 'Creating...' : 'Create User'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -621,9 +649,16 @@ const Users: React.FC = () => {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleUpdateUser} variant="contained">
-            Update User
+          <Button onClick={() => setEditDialogOpen(false)} disabled={actionLoading}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleUpdateUser} 
+            variant="contained" 
+            disabled={actionLoading}
+            startIcon={actionLoading ? <CircularProgress size={20} /> : null}
+          >
+            {actionLoading ? 'Updating...' : 'Update User'}
           </Button>
         </DialogActions>
       </Dialog>
