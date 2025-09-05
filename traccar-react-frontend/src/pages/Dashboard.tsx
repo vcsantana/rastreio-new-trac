@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Grid,
@@ -14,6 +14,9 @@ import {
   Speed as SpeedIcon,
   Timeline as TimelineIcon,
 } from '@mui/icons-material';
+import MapView from '../components/map/MapView';
+import { useWebSocket, usePositionUpdates, useDeviceStatusUpdates } from '../hooks/useWebSocket';
+import { WebSocketTestPanel } from '../components/common/WebSocketTestPanel';
 
 interface StatCardProps {
   title: string;
@@ -57,30 +60,134 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
 
 const Dashboard: React.FC = () => {
   const theme = useTheme();
+  const [selectedDeviceId, setSelectedDeviceId] = useState<number | undefined>();
+  
+  // WebSocket hooks for real-time updates
+  const { connected, subscribe, unsubscribe } = useWebSocket();
+  const { positions, lastPosition } = usePositionUpdates();
+  const { deviceUpdates, lastDeviceUpdate } = useDeviceStatusUpdates();
 
-  // Mock data - replace with real API calls
+  // Subscribe to real-time updates when component mounts
+  useEffect(() => {
+    if (connected) {
+      subscribe('positions');
+      subscribe('devices');
+      subscribe('events');
+      
+      return () => {
+        unsubscribe('positions');
+        unsubscribe('devices');
+        unsubscribe('events');
+      };
+    }
+  }, [connected, subscribe, unsubscribe]);
+
+  // Mock device data - replace with real API calls
+  const mockDevices = [
+    {
+      id: 1,
+      name: 'Vehicle 001',
+      status: 'online',
+      category: 'car',
+      lastUpdate: new Date().toISOString(),
+    },
+    {
+      id: 2,
+      name: 'Truck 002',
+      status: 'offline',
+      category: 'truck',
+      lastUpdate: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+    },
+    {
+      id: 3,
+      name: 'Motorcycle 003',
+      status: 'online',
+      category: 'motorcycle',
+      lastUpdate: new Date(Date.now() - 1800000).toISOString(), // 30 minutes ago
+    },
+    {
+      id: 4,
+      name: 'Delivery Van 004',
+      status: 'online',
+      category: 'van',
+      lastUpdate: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
+    },
+  ];
+
+  // Mock position data - replace with real API calls
+  const mockPositions = [
+    {
+      id: 1,
+      deviceId: 1,
+      latitude: -23.5505,
+      longitude: -46.6333,
+      course: 45,
+      speed: 60,
+      fixTime: new Date().toISOString(),
+      attributes: { battery: 85, signal: -65 },
+    },
+    {
+      id: 2,
+      deviceId: 2,
+      latitude: -23.5485,
+      longitude: -46.6365,
+      course: 180,
+      speed: 0,
+      fixTime: new Date(Date.now() - 3600000).toISOString(),
+      attributes: { battery: 45, signal: -78 },
+    },
+    {
+      id: 3,
+      deviceId: 3,
+      latitude: -23.5525,
+      longitude: -46.6355,
+      course: 90,
+      speed: 35,
+      fixTime: new Date(Date.now() - 1800000).toISOString(),
+      attributes: { battery: 92, signal: -58 },
+    },
+    {
+      id: 4,
+      deviceId: 4,
+      latitude: -23.5495,
+      longitude: -46.6345,
+      course: 270,
+      speed: 25,
+      fixTime: new Date(Date.now() - 300000).toISOString(),
+      attributes: { battery: 78, signal: -70 },
+    },
+  ];
+
+  // Calculate stats from mock data
+  const onlineDevices = mockDevices.filter(d => d.status === 'online').length;
+  const avgSpeed = Math.round(
+    mockPositions.reduce((sum, pos) => sum + (pos.speed || 0), 0) / mockPositions.length
+  );
+  const totalDistance = mockPositions.reduce((sum, pos) => sum + (pos.speed || 0) * 0.5, 0); // Mock calculation
+
+  // Stats calculated from mock data
   const stats = [
     {
       title: 'Total Devices',
-      value: 12,
+      value: mockDevices.length,
       icon: <DevicesIcon />,
       color: theme.palette.primary.main,
     },
     {
       title: 'Online Devices',
-      value: 8,
+      value: onlineDevices,
       icon: <LocationIcon />,
       color: theme.palette.success.main,
     },
     {
       title: 'Avg Speed',
-      value: '45 km/h',
+      value: `${avgSpeed} km/h`,
       icon: <SpeedIcon />,
       color: theme.palette.warning.main,
     },
     {
       title: 'Total Distance',
-      value: '1,234 km',
+      value: `${Math.round(totalDistance)} km`,
       icon: <TimelineIcon />,
       color: theme.palette.info.main,
     },
@@ -102,32 +209,24 @@ const Dashboard: React.FC = () => {
 
       <Grid container spacing={3}>
         <Grid item xs={12} lg={8}>
-          <Paper sx={{ p: 3, height: 400 }}>
+          <Paper sx={{ p: 2, height: 500 }}>
             <Typography variant="h6" gutterBottom>
-              Map View
+              Live Map View
             </Typography>
-            <Box
-              sx={{
-                width: '100%',
-                height: '100%',
-                backgroundColor: theme.palette.grey[100],
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 1,
-              }}
-            >
-              <Typography variant="body1" color="text.secondary">
-                Map will be displayed here
-                <br />
-                (MapLibre GL integration coming soon)
-              </Typography>
+            <Box sx={{ height: 'calc(100% - 40px)', borderRadius: 1, overflow: 'hidden' }}>
+              <MapView
+                positions={mockPositions}
+                devices={mockDevices}
+                selectedDeviceId={selectedDeviceId}
+                onDeviceSelect={setSelectedDeviceId}
+                style={{ width: '100%', height: '100%' }}
+              />
             </Box>
           </Paper>
         </Grid>
         
         <Grid item xs={12} lg={4}>
-          <Paper sx={{ p: 3, height: 400 }}>
+          <Paper sx={{ p: 3, height: 500 }}>
             <Typography variant="h6" gutterBottom>
               Recent Activity
             </Typography>
@@ -139,6 +238,13 @@ const Dashboard: React.FC = () => {
           </Paper>
         </Grid>
       </Grid>
+
+      {/* WebSocket Test Panel - Only show in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <Box sx={{ mt: 3 }}>
+          <WebSocketTestPanel />
+        </Box>
+      )}
     </Box>
   );
 };

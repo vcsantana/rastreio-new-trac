@@ -11,6 +11,7 @@ from app.models.user import User
 from app.models.device import Device
 from app.schemas.device import DeviceCreate, DeviceUpdate, DeviceResponse
 from app.api.auth import get_current_user
+from app.services.websocket_service import websocket_service
 
 router = APIRouter()
 
@@ -44,6 +45,9 @@ async def create_device(
     db.add(db_device)
     await db.commit()
     await db.refresh(db_device)
+    
+    # Broadcast device creation via WebSocket
+    await websocket_service.broadcast_device_status_update(db_device)
     
     return DeviceResponse.from_orm(db_device)
 
@@ -82,6 +86,9 @@ async def update_device(
             detail="Device not found"
         )
     
+    # Store old status for comparison
+    old_status = device.status
+    
     # Update fields
     update_data = device_update.dict(exclude_unset=True)
     for field, value in update_data.items():
@@ -89,6 +96,10 @@ async def update_device(
     
     await db.commit()
     await db.refresh(device)
+    
+    # Broadcast device status change via WebSocket if status changed
+    if old_status != device.status:
+        await websocket_service.broadcast_device_status_update(device, old_status)
     
     return DeviceResponse.from_orm(device)
 

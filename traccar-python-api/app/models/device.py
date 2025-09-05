@@ -34,4 +34,6 @@ class Device(Base):
     attributes = Column(Text)
     
     # Relationships
-    positions = relationship("Position", back_populates="device", cascade="all, delete-orphan")
+    positions = relationship("Position", back_populates="device", cascade="all, delete-orphan", foreign_keys="Position.device_id")
+    events = relationship("Event", back_populates="device", cascade="all, delete-orphan")
+    last_position = relationship("Position", foreign_keys=[position_id], post_update=True)

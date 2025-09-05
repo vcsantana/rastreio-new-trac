@@ -11,9 +11,12 @@ import uvicorn
 
 from app.config import settings
 from app.database import init_db
-from app.api import auth, devices, positions, websocket
+from app.api import auth, devices, positions, websocket, events, geofences, server, protocols, reports
 # Import models to ensure they are registered with SQLAlchemy
-from app.models import user, device, position
+from app.models import user, device, position, event, geofence, report
+from app.models import server as server_model
+# Import protocol server manager
+from app.protocols import start_protocol_servers, stop_protocol_servers
 
 # Configure structured logging
 structlog.configure(
@@ -100,21 +103,51 @@ async def global_exception_handler(request, exc):
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
+    from app.protocols import get_protocol_server_status
+    
+    protocol_status = get_protocol_server_status()
+    active_protocols = sum(1 for server in protocol_status.values() if server.get("running", False))
+    
     return {
         "status": "healthy",
         "version": settings.VERSION,
-        "protocols_active": 0  # TODO: implement protocol server manager
+        "protocols_active": active_protocols,
+        "protocols": protocol_status
     }
 
 # Include API routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(devices.router, prefix="/api/devices", tags=["Devices"])
 app.include_router(positions.router, prefix="/api/positions", tags=["Positions"])
-app.include_router(websocket.router, prefix="/ws", tags=["WebSocket"])
+app.include_router(events.router, prefix="/api", tags=["Events"])
+app.include_router(geofences.router, prefix="/api", tags=["Geofences"])
+app.include_router(server.router, prefix="/api", tags=["Server"])
+app.include_router(protocols.router, prefix="/api/protocols", tags=["Protocols"])
+app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
+app.include_router(websocket.router, tags=["WebSocket"])
 
-# Make managers available to routes (TODO: implement)
-# app.state.websocket_manager = websocket_manager
-# app.state.protocol_server_manager = protocol_server_manager
+# Startup and shutdown events
+@app.on_event("startup")
+async def startup_event():
+    """Startup event handler."""
+    logger.info("Starting Traccar Python API...")
+    
+    # Initialize database
+    await init_db()
+    logger.info("Database initialized")
+    
+    # Start protocol servers (optional, can be started manually via API)
+    # await start_protocol_servers()
+    # logger.info("Protocol servers started")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Shutdown event handler."""
+    logger.info("Shutting down Traccar Python API...")
+    
+    # Stop protocol servers
+    await stop_protocol_servers()
+    logger.info("Protocol servers stopped")
 
 
 if __name__ == "__main__":

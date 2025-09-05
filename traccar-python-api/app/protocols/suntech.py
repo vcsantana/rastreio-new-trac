@@ -375,3 +375,167 @@ class SuntechProtocolHandler(BaseProtocolHandler):
             "alarm_arm",
             "alarm_disarm"
         ]
+    
+    async def parse_message(self, data: bytes, client_address: Tuple[str, int]) -> Optional['ProtocolMessage']:
+        """
+        Parse incoming Suntech message data.
+        
+        Args:
+            data: Raw message data
+            client_address: Client address tuple (host, port)
+            
+        Returns:
+            Parsed ProtocolMessage or None if invalid
+        """
+        try:
+            message_str = data.decode('utf-8', errors='ignore').strip()
+            if not message_str:
+                return None
+            
+            # Try to parse as universal format first
+            parsed_data = await self._parse_universal_message(message_str)
+            if not parsed_data:
+                # Try legacy format
+                parsed_data = await self._parse_legacy_message(message_str)
+            
+            if not parsed_data:
+                return None
+            
+            from app.protocols.base import ProtocolMessage
+            return ProtocolMessage(
+                device_id=parsed_data.get('device_id', ''),
+                message_type=parsed_data.get('message_type', 'unknown'),
+                data=parsed_data,
+                timestamp=parsed_data.get('timestamp', datetime.utcnow()),
+                raw_data=data,
+                valid=True
+            )
+            
+        except Exception as e:
+            logger.error("Error parsing Suntech message", error=str(e), data=data)
+            return None
+    
+    async def create_position(self, message: 'ProtocolMessage') -> Optional[Dict[str, Any]]:
+        """
+        Create position data from parsed Suntech message.
+        
+        Args:
+            message: Parsed protocol message
+            
+        Returns:
+            Position data dictionary or None
+        """
+        try:
+            data = message.data
+            
+            # Extract position data
+            latitude = data.get('latitude')
+            longitude = data.get('longitude')
+            
+            if latitude is None or longitude is None:
+                return None
+            
+            if not is_valid_coordinates(latitude, longitude):
+                return None
+            
+            position_data = {
+                'device_id': message.device_id,
+                'latitude': latitude,
+                'longitude': longitude,
+                'altitude': data.get('altitude', 0),
+                'speed': data.get('speed', 0),
+                'course': data.get('course', 0),
+                'timestamp': message.timestamp,
+                'valid': True,
+                'attributes': {
+                    'satellites': data.get('satellites'),
+                    'hdop': data.get('hdop'),
+                    'odometer': data.get('odometer'),
+                    'fuel': data.get('fuel'),
+                    'battery': data.get('battery'),
+                    'power': data.get('power'),
+                    'ignition': data.get('ignition'),
+                    'motion': data.get('motion')
+                }
+            }
+            
+            return position_data
+            
+        except Exception as e:
+            logger.error("Error creating position from Suntech message", error=str(e))
+            return None
+    
+    async def create_events(self, message: 'ProtocolMessage') -> List[Dict[str, Any]]:
+        """
+        Create events from parsed Suntech message.
+        
+        Args:
+            message: Parsed protocol message
+            
+        Returns:
+            List of event data dictionaries
+        """
+        events = []
+        
+        try:
+            data = message.data
+            device_id = message.device_id
+            timestamp = message.timestamp
+            
+            # Check for emergency alarms
+            alarm_type = data.get('alarm_type')
+            if alarm_type and alarm_type in self.EMERGENCY_ALARMS:
+                event_type = self.EMERGENCY_ALARMS[alarm_type]
+                events.append({
+                    'device_id': device_id,
+                    'type': event_type,
+                    'timestamp': timestamp,
+                    'attributes': {
+                        'alarm_type': alarm_type,
+                        'raw_data': data
+                    }
+                })
+            
+            # Check for alert alarms
+            if alarm_type and alarm_type in self.ALERT_ALARMS:
+                event_type = self.ALERT_ALARMS[alarm_type]
+                events.append({
+                    'device_id': device_id,
+                    'type': event_type,
+                    'timestamp': timestamp,
+                    'attributes': {
+                        'alarm_type': alarm_type,
+                        'raw_data': data
+                    }
+                })
+            
+            # Check for ignition events
+            ignition = data.get('ignition')
+            if ignition is not None:
+                event_type = 'ignition_on' if ignition else 'ignition_off'
+                events.append({
+                    'device_id': device_id,
+                    'type': event_type,
+                    'timestamp': timestamp,
+                    'attributes': {
+                        'ignition': ignition
+                    }
+                })
+            
+            # Check for motion events
+            motion = data.get('motion')
+            if motion is not None:
+                event_type = 'motion_start' if motion else 'motion_stop'
+                events.append({
+                    'device_id': device_id,
+                    'type': event_type,
+                    'timestamp': timestamp,
+                    'attributes': {
+                        'motion': motion
+                    }
+                })
+            
+        except Exception as e:
+            logger.error("Error creating events from Suntech message", error=str(e))
+        
+        return events

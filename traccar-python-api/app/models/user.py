@@ -2,6 +2,7 @@
 User model
 """
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
 
@@ -21,3 +22,7 @@ class User(Base):
     
     # User attributes (JSON field for flexibility)
     attributes = Column(Text)  # JSON string for additional attributes
+    
+    # Relationships
+    reports = relationship("Report", back_populates="user", cascade="all, delete-orphan")
+    report_templates = relationship("ReportTemplate", back_populates="user", cascade="all, delete-orphan")

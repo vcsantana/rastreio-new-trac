@@ -36,8 +36,9 @@ class Position(Base):
     # Raw data
     attributes = Column(Text)  # JSON string for additional attributes
     
-    # Relationship
-    device = relationship("Device", back_populates="positions")
+    # Relationships
+    device = relationship("Device", back_populates="positions", foreign_keys=[device_id])
+    events = relationship("Event", back_populates="position")
     
     def __repr__(self):
         return f"<Position(id={self.id}, device_id={self.device_id}, lat={self.latitude}, lon={self.longitude})>"

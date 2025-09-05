@@ -39,6 +39,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useResponsive } from '../../hooks/useResponsive';
 import { RootState } from '../../store';
 import { toggleTheme } from '../../store/slices/uiSlice';
+import { WebSocketStatus } from './WebSocketStatus';
 
 const DRAWER_WIDTH = 280;
 
@@ -214,6 +215,9 @@ export const Layout: React.FC = () => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {navigationItems.find(item => isCurrentPath(item.path))?.label || 'Traccar'}
           </Typography>
+
+          {/* WebSocket Status */}
+          <WebSocketStatus />
 
           {/* Theme toggle */}
           <IconButton color="inherit" onClick={handleThemeToggle}>

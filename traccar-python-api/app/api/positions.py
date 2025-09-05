@@ -11,8 +11,9 @@ from app.database import get_db
 from app.models.user import User
 from app.models.position import Position
 from app.models.device import Device
-from app.schemas.position import PositionResponse
+from app.schemas.position import PositionResponse, PositionCreate
 from app.api.auth import get_current_user
+from app.services.websocket_service import websocket_service
 
 router = APIRouter()
 
@@ -87,5 +88,34 @@ async def get_position(
             status_code=404,
             detail="Position not found"
         )
+    
+    return PositionResponse.from_orm(position)
+
+
+@router.post("/", response_model=PositionResponse)
+async def create_position(
+    position_data: PositionCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new position and broadcast via WebSocket"""
+    # Verify device exists and user has access
+    device_result = await db.execute(select(Device).where(Device.id == position_data.device_id))
+    device = device_result.scalar_one_or_none()
+    
+    if not device:
+        raise HTTPException(
+            status_code=404,
+            detail="Device not found"
+        )
+    
+    # Create position
+    position = Position(**position_data.dict())
+    db.add(position)
+    await db.commit()
+    await db.refresh(position)
+    
+    # Broadcast position update via WebSocket
+    await websocket_service.broadcast_position_update(position, device)
     
     return PositionResponse.from_orm(position)
