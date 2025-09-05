@@ -252,7 +252,8 @@ const Dashboard: React.FC = () => {
         </Grid>
       </Box>
 
-      {/* Recent Activity Panel - Right Side */}
+      {/* Recent Activity Panel - Right Side - COMMENTED OUT */}
+      {/* 
       <Box sx={{ 
         position: 'absolute', 
         top: 200, 
@@ -311,6 +312,7 @@ const Dashboard: React.FC = () => {
           </Box>
         </Paper>
       </Box>
+      */}
     </Box>
   );
 };
