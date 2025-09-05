@@ -9,6 +9,7 @@ class GroupBase(BaseModel):
     name: str
     description: Optional[str] = None
     disabled: Optional[bool] = False
+    person_id: Optional[int] = None
 
 class GroupCreate(GroupBase):
     pass
@@ -17,12 +18,14 @@ class GroupUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     disabled: Optional[bool] = None
+    person_id: Optional[int] = None
 
 class GroupResponse(GroupBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
     device_count: Optional[int] = 0
+    person_name: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -14,9 +14,13 @@ class Group(Base):
     description = Column(Text)
     disabled = Column(Boolean, default=False)
     
+    # Person relationship
+    person_id = Column(Integer, ForeignKey("persons.id"))
+    
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     # Relationships
     devices = relationship("Device", back_populates="group")
+    person = relationship("Person", back_populates="groups")

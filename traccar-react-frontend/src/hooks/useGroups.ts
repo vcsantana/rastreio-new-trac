@@ -6,6 +6,8 @@ export interface Group {
   name: string;
   description?: string;
   disabled: boolean;
+  person_id?: number;
+  person_name?: string;
   created_at: string;
   updated_at?: string;
   device_count: number;
@@ -15,12 +17,14 @@ export interface CreateGroupData {
   name: string;
   description?: string;
   disabled?: boolean;
+  person_id?: number;
 }
 
 export interface UpdateGroupData {
   name?: string;
   description?: string;
   disabled?: boolean;
+  person_id?: number;
 }
 
 export const useGroups = () => {

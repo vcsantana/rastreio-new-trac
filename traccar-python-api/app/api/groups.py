@@ -10,6 +10,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.group import Group
 from app.models.device import Device
+from app.models.person import Person
 from app.schemas.group import GroupCreate, GroupUpdate, GroupResponse
 from app.api.auth import get_current_user
 
@@ -22,23 +23,26 @@ async def get_groups(
 ):
     """Get all groups"""
     result = await db.execute(
-        select(Group, func.count(Device.id).label('device_count'))
+        select(Group, func.count(Device.id).label('device_count'), Person.name.label('person_name'))
         .outerjoin(Device, Group.id == Device.group_id)
-        .group_by(Group.id)
+        .outerjoin(Person, Group.person_id == Person.id)
+        .group_by(Group.id, Person.name)
         .order_by(Group.name)
     )
     groups_with_counts = result.all()
     
     groups = []
-    for group, device_count in groups_with_counts:
+    for group, device_count, person_name in groups_with_counts:
         group_dict = {
             "id": group.id,
             "name": group.name,
             "description": group.description,
             "disabled": group.disabled,
+            "person_id": group.person_id,
             "created_at": group.created_at,
             "updated_at": group.updated_at,
-            "device_count": device_count
+            "device_count": device_count,
+            "person_name": person_name
         }
         groups.append(GroupResponse(**group_dict))
     
@@ -70,9 +74,11 @@ async def create_group(
         name=db_group.name,
         description=db_group.description,
         disabled=db_group.disabled,
+        person_id=db_group.person_id,
         created_at=db_group.created_at,
         updated_at=db_group.updated_at,
-        device_count=0
+        device_count=0,
+        person_name=None
     )
 
 @router.get("/{group_id}", response_model=GroupResponse)
@@ -104,7 +110,8 @@ async def get_group(
         disabled=group.disabled,
         created_at=group.created_at,
         updated_at=group.updated_at,
-        device_count=device_count
+        device_count=device_count,
+        person_name=None
     )
 
 @router.put("/{group_id}", response_model=GroupResponse)
@@ -156,7 +163,8 @@ async def update_group(
         disabled=group.disabled,
         created_at=group.created_at,
         updated_at=group.updated_at,
-        device_count=device_count
+        device_count=device_count,
+        person_name=None
     )
 
 @router.delete("/{group_id}")

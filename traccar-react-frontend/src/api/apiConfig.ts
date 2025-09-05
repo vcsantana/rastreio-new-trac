@@ -17,6 +17,9 @@ export const API_ENDPOINTS = {
   
   // Groups
   GROUPS: `${API_BASE_URL}/api/groups`,
+
+  // Persons
+  PERSONS: `${API_BASE_URL}/api/persons`,
   
   // Positions
   POSITIONS: `${API_BASE_URL}/api/positions`,

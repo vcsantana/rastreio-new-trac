@@ -12,8 +12,12 @@ import {
   Switch,
   Alert,
   CircularProgress,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import { Group } from '../../hooks/useGroups';
+import { usePersons } from '../../hooks/usePersons';
 
 interface GroupDialogProps {
   open: boolean;
@@ -30,10 +34,12 @@ const GroupDialog: React.FC<GroupDialogProps> = ({
   group,
   mode,
 }) => {
+  const { persons } = usePersons();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     disabled: false,
+    person_id: undefined as number | undefined,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,12 +51,14 @@ const GroupDialog: React.FC<GroupDialogProps> = ({
           name: group.name,
           description: group.description || '',
           disabled: group.disabled,
+          person_id: group.person_id || undefined,
         });
       } else {
         setFormData({
           name: '',
           description: '',
           disabled: false,
+          person_id: undefined,
         });
       }
       setError(null);
@@ -127,6 +135,26 @@ const GroupDialog: React.FC<GroupDialogProps> = ({
               disabled={loading}
               placeholder="Optional description for this group"
             />
+          </Grid>
+          
+          <Grid size={{ xs: 12 }}>
+            <FormControl fullWidth disabled={loading}>
+              <InputLabel>Person</InputLabel>
+              <Select
+                value={formData.person_id || ''}
+                label="Person"
+                onChange={handleChange('person_id')}
+              >
+                <MenuItem value="">
+                  <em>No Person</em>
+                </MenuItem>
+                {persons.map((person) => (
+                  <MenuItem key={person.id} value={person.id}>
+                    {person.name} ({person.person_type === 'legal' ? 'Legal' : 'Physical'})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Grid>
           
           <Grid size={{ xs: 12 }}>

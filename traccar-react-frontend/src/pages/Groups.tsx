@@ -170,6 +170,7 @@ const Groups: React.FC = () => {
               <TableRow>
                 <TableCell>Name</TableCell>
                 <TableCell>Description</TableCell>
+                <TableCell>Person</TableCell>
                 <TableCell>Devices</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Created</TableCell>
@@ -188,6 +189,20 @@ const Groups: React.FC = () => {
                     <Typography variant="body2" color="text.secondary">
                       {group.description || '-'}
                     </Typography>
+                  </TableCell>
+                  <TableCell>
+                    {group.person_name ? (
+                      <Chip
+                        label={group.person_name}
+                        size="small"
+                        color="secondary"
+                        variant="outlined"
+                      />
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        No Person
+                      </Typography>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Chip
