@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -15,6 +15,14 @@ import {
   Alert,
   CircularProgress,
   Tooltip,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Grid,
+  InputAdornment,
+  Collapse,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -22,6 +30,9 @@ import {
   Add as AddIcon,
   Block as DisableIcon,
   CheckCircle as EnableIcon,
+  Search as SearchIcon,
+  FilterList as FilterIcon,
+  Clear as ClearIcon,
 } from '@mui/icons-material';
 import { useGroups, Group } from '../hooks/useGroups';
 import GroupDialog from '../components/common/GroupDialog';
@@ -44,6 +55,56 @@ const Groups: React.FC = () => {
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [confirmAction, setConfirmAction] = useState<'delete' | 'disable' | 'enable'>('delete');
+
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [personFilter, setPersonFilter] = useState<string>('all');
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+
+  // Get unique values for filter options
+  const uniquePersons = useMemo(() => {
+    const persons = groups.map(g => g.person_name).filter(Boolean);
+    return Array.from(new Set(persons));
+  }, [groups]);
+
+  // Filter groups based on current filters
+  const filteredGroups = useMemo(() => {
+    return groups.filter(group => {
+      // Search term filter
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch = 
+          group.name.toLowerCase().includes(searchLower) ||
+          (group.description && group.description.toLowerCase().includes(searchLower)) ||
+          (group.person_name && group.person_name.toLowerCase().includes(searchLower));
+        if (!matchesSearch) return false;
+      }
+
+      // Status filter
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'enabled' && group.disabled) return false;
+        if (statusFilter === 'disabled' && !group.disabled) return false;
+      }
+
+      // Person filter
+      if (personFilter !== 'all' && group.person_name !== personFilter) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [groups, searchTerm, statusFilter, personFilter]);
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setPersonFilter('all');
+  };
+
+  // Check if any filters are active
+  const hasActiveFilters = searchTerm || statusFilter !== 'all' || personFilter !== 'all';
 
   const getStatusColor = (disabled: boolean) => {
     return disabled ? 'default' : 'success';
@@ -146,16 +207,104 @@ const Groups: React.FC = () => {
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" component="h1">
-          Groups
+          Groups ({filteredGroups.length})
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleAddGroup}
-        >
-          Add Group
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Button
+            variant="outlined"
+            startIcon={<FilterIcon />}
+            onClick={() => setFiltersExpanded(!filtersExpanded)}
+            color={hasActiveFilters ? 'primary' : 'inherit'}
+          >
+            Filters {hasActiveFilters && `(${[
+              searchTerm && 'Search',
+              statusFilter !== 'all' && 'Status',
+              personFilter !== 'all' && 'Person'
+            ].filter(Boolean).length})`}
+          </Button>
+          {hasActiveFilters && (
+            <Button
+              variant="outlined"
+              startIcon={<ClearIcon />}
+              onClick={clearFilters}
+              size="small"
+            >
+              Clear
+            </Button>
+          )}
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleAddGroup}
+          >
+            Add Group
+          </Button>
+        </Box>
       </Box>
+
+      {/* Filters Section */}
+      <Collapse in={filtersExpanded}>
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Filter Groups
+          </Typography>
+          <Grid container spacing={2}>
+            {/* Search */}
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Search groups"
+                placeholder="Search by name, description, or person..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+                size="small"
+              />
+            </Grid>
+
+            {/* Status Filter */}
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={statusFilter}
+                  label="Status"
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <MenuItem value="all">All Status</MenuItem>
+                  <MenuItem value="enabled">Enabled</MenuItem>
+                  <MenuItem value="disabled">Disabled</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Person Filter */}
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Person</InputLabel>
+                <Select
+                  value={personFilter}
+                  label="Person"
+                  onChange={(e) => setPersonFilter(e.target.value)}
+                >
+                  <MenuItem value="all">All Persons</MenuItem>
+                  {uniquePersons.map(person => (
+                    <MenuItem key={person} value={person}>
+                      {person}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </Paper>
+      </Collapse>
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
@@ -178,7 +327,7 @@ const Groups: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {groups.map((group) => (
+              {filteredGroups.map((group) => (
                 <TableRow key={group.id}>
                   <TableCell>
                     <Typography variant="body2" fontWeight="medium">
@@ -263,6 +412,32 @@ const Groups: React.FC = () => {
           </Table>
         </TableContainer>
       </Paper>
+
+      {filteredGroups.length === 0 && !loading && (
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Typography variant="h6" color="text.secondary">
+            {hasActiveFilters 
+              ? 'No groups match the current filters'
+              : 'No groups found'
+            }
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            {hasActiveFilters 
+              ? 'Try adjusting your search criteria or clear the filters.'
+              : 'Click "Add Group" to create your first group.'
+            }
+          </Typography>
+          {hasActiveFilters && (
+            <Button
+              variant="outlined"
+              onClick={clearFilters}
+              sx={{ mt: 2 }}
+            >
+              Clear Filters
+            </Button>
+          )}
+        </Box>
+      )}
 
       {/* Group Dialog */}
       <GroupDialog

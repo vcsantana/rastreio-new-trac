@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -20,6 +20,13 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Grid,
+  InputAdornment,
+  Collapse,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -30,6 +37,9 @@ import {
   Email as EmailIcon,
   Phone as PhoneIcon,
   LocationOn as LocationIcon,
+  Search as SearchIcon,
+  FilterList as FilterIcon,
+  Clear as ClearIcon,
 } from '@mui/icons-material';
 import { usePersons, Person } from '../hooks/usePersons';
 import PersonDialog from '../components/common/PersonDialog';
@@ -50,6 +60,69 @@ const Persons: React.FC = () => {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [actionType, setActionType] = useState<'edit' | 'delete' | 'toggle'>('edit');
+
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [locationFilter, setLocationFilter] = useState<string>('all');
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+
+  // Get unique values for filter options
+  const uniqueLocations = useMemo(() => {
+    const locations = persons
+      .map(p => p.city && p.state ? `${p.city}, ${p.state}` : null)
+      .filter(Boolean);
+    return Array.from(new Set(locations));
+  }, [persons]);
+
+  // Filter persons based on current filters
+  const filteredPersons = useMemo(() => {
+    return persons.filter(person => {
+      // Search term filter
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch = 
+          person.name.toLowerCase().includes(searchLower) ||
+          person.email.toLowerCase().includes(searchLower) ||
+          (person.phone && person.phone.includes(searchTerm)) ||
+          (person.cpf && person.cpf.includes(searchTerm)) ||
+          (person.cnpj && person.cnpj.includes(searchTerm)) ||
+          (person.trade_name && person.trade_name.toLowerCase().includes(searchLower));
+        if (!matchesSearch) return false;
+      }
+
+      // Type filter
+      if (typeFilter !== 'all' && person.person_type !== typeFilter) {
+        return false;
+      }
+
+      // Status filter
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'active' && !person.active) return false;
+        if (statusFilter === 'inactive' && person.active) return false;
+      }
+
+      // Location filter
+      if (locationFilter !== 'all') {
+        const personLocation = person.city && person.state ? `${person.city}, ${person.state}` : null;
+        if (personLocation !== locationFilter) return false;
+      }
+
+      return true;
+    });
+  }, [persons, searchTerm, typeFilter, statusFilter, locationFilter]);
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchTerm('');
+    setTypeFilter('all');
+    setStatusFilter('all');
+    setLocationFilter('all');
+  };
+
+  // Check if any filters are active
+  const hasActiveFilters = searchTerm || typeFilter !== 'all' || statusFilter !== 'all' || locationFilter !== 'all';
 
   const handleAddPerson = () => {
     setSelectedPerson(null);
@@ -152,17 +225,122 @@ const Persons: React.FC = () => {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
-          Persons
+          Persons ({filteredPersons.length})
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleAddPerson}
-          disabled={loading}
-        >
-          Add Person
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Button
+            variant="outlined"
+            startIcon={<FilterIcon />}
+            onClick={() => setFiltersExpanded(!filtersExpanded)}
+            color={hasActiveFilters ? 'primary' : 'inherit'}
+          >
+            Filters {hasActiveFilters && `(${[
+              searchTerm && 'Search',
+              typeFilter !== 'all' && 'Type',
+              statusFilter !== 'all' && 'Status',
+              locationFilter !== 'all' && 'Location'
+            ].filter(Boolean).length})`}
+          </Button>
+          {hasActiveFilters && (
+            <Button
+              variant="outlined"
+              startIcon={<ClearIcon />}
+              onClick={clearFilters}
+              size="small"
+            >
+              Clear
+            </Button>
+          )}
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleAddPerson}
+            disabled={loading}
+          >
+            Add Person
+          </Button>
+        </Box>
       </Box>
+
+      {/* Filters Section */}
+      <Collapse in={filtersExpanded}>
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Filter Persons
+          </Typography>
+          <Grid container spacing={2}>
+            {/* Search */}
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="Search persons"
+                placeholder="Search by name, email, phone, document..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+                size="small"
+              />
+            </Grid>
+
+            {/* Type Filter */}
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Type</InputLabel>
+                <Select
+                  value={typeFilter}
+                  label="Type"
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                >
+                  <MenuItem value="all">All Types</MenuItem>
+                  <MenuItem value="physical">Physical</MenuItem>
+                  <MenuItem value="legal">Legal</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Status Filter */}
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={statusFilter}
+                  label="Status"
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <MenuItem value="all">All Status</MenuItem>
+                  <MenuItem value="active">Active</MenuItem>
+                  <MenuItem value="inactive">Inactive</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Location Filter */}
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Location</InputLabel>
+                <Select
+                  value={locationFilter}
+                  label="Location"
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                >
+                  <MenuItem value="all">All Locations</MenuItem>
+                  {uniqueLocations.map(location => (
+                    <MenuItem key={location} value={location}>
+                      {location}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </Paper>
+      </Collapse>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -192,7 +370,7 @@ const Persons: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {persons.map((person) => (
+            {filteredPersons.map((person) => (
               <TableRow key={person.id} hover>
                 <TableCell>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -310,14 +488,29 @@ const Persons: React.FC = () => {
         </Table>
       </TableContainer>
 
-      {persons.length === 0 && !loading && (
+      {filteredPersons.length === 0 && !loading && (
         <Box sx={{ textAlign: 'center', py: 4 }}>
           <Typography variant="h6" color="text.secondary">
-            No persons found
+            {hasActiveFilters 
+              ? 'No persons match the current filters'
+              : 'No persons found'
+            }
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Click "Add Person" to create your first person record.
+            {hasActiveFilters 
+              ? 'Try adjusting your search criteria or clear the filters.'
+              : 'Click "Add Person" to create your first person record.'
+            }
           </Typography>
+          {hasActiveFilters && (
+            <Button
+              variant="outlined"
+              onClick={clearFilters}
+              sx={{ mt: 2 }}
+            >
+              Clear Filters
+            </Button>
+          )}
         </Box>
       )}
 
