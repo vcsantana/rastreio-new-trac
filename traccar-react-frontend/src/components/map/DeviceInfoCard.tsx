@@ -92,8 +92,8 @@ const DeviceInfoCard: React.FC<DeviceInfoCardProps> = ({
     <Card
       sx={{
         position: 'fixed',
-        top: 80,
-        right: 16,
+        top: 200,
+        right: 22,
         width: 320,
         maxWidth: '90vw',
         zIndex: 99999,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -15,6 +15,14 @@ import {
   Alert,
   CircularProgress,
   Tooltip,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Grid,
+  InputAdornment,
+  Collapse,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -23,6 +31,9 @@ import {
   Circle as StatusIcon,
   Block as DisableIcon,
   CheckCircle as EnableIcon,
+  Search as SearchIcon,
+  FilterList as FilterIcon,
+  Clear as ClearIcon,
 } from '@mui/icons-material';
 import { useDevices, Device } from '../hooks/useDevices';
 import DeviceDialog from '../components/common/DeviceDialog';
@@ -45,6 +56,82 @@ const Devices: React.FC = () => {
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [confirmAction, setConfirmAction] = useState<'delete' | 'disable' | 'enable'>('delete');
+
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [protocolFilter, setProtocolFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [groupFilter, setGroupFilter] = useState<string>('all');
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+
+  // Get unique values for filter options
+  const uniqueProtocols = useMemo(() => {
+    const protocols = devices.map(d => d.protocol).filter(Boolean);
+    return Array.from(new Set(protocols));
+  }, [devices]);
+
+  const uniqueCategories = useMemo(() => {
+    const categories = devices.map(d => d.category).filter(Boolean);
+    return Array.from(new Set(categories));
+  }, [devices]);
+
+  const uniqueGroups = useMemo(() => {
+    const groups = devices.map(d => d.group_name).filter(Boolean);
+    return Array.from(new Set(groups));
+  }, [devices]);
+
+  // Filter devices based on current filters
+  const filteredDevices = useMemo(() => {
+    return devices.filter(device => {
+      // Search term filter
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch = 
+          device.name.toLowerCase().includes(searchLower) ||
+          device.unique_id.toLowerCase().includes(searchLower);
+        if (!matchesSearch) return false;
+      }
+
+      // Status filter
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'disabled' && !device.disabled) return false;
+        if (statusFilter === 'enabled' && device.disabled) return false;
+        if (statusFilter === 'online' && (device.disabled || device.status !== 'online')) return false;
+        if (statusFilter === 'offline' && (device.disabled || device.status !== 'offline')) return false;
+      }
+
+      // Protocol filter
+      if (protocolFilter !== 'all' && device.protocol !== protocolFilter) {
+        return false;
+      }
+
+      // Category filter
+      if (categoryFilter !== 'all' && device.category !== categoryFilter) {
+        return false;
+      }
+
+      // Group filter
+      if (groupFilter !== 'all' && device.group_name !== groupFilter) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [devices, searchTerm, statusFilter, protocolFilter, categoryFilter, groupFilter]);
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setProtocolFilter('all');
+    setCategoryFilter('all');
+    setGroupFilter('all');
+  };
+
+  // Check if any filters are active
+  const hasActiveFilters = searchTerm || statusFilter !== 'all' || protocolFilter !== 'all' || 
+                          categoryFilter !== 'all' || groupFilter !== 'all';
 
   const getStatusColor = (status: string, disabled?: boolean) => {
     if (disabled) return 'default';
@@ -153,17 +240,147 @@ const Devices: React.FC = () => {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
-          Devices
+          Devices ({filteredDevices.length})
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleAddDevice}
-          disabled={loading}
-        >
-          Add Device
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Button
+            variant="outlined"
+            startIcon={<FilterIcon />}
+            onClick={() => setFiltersExpanded(!filtersExpanded)}
+            color={hasActiveFilters ? 'primary' : 'inherit'}
+          >
+            Filters {hasActiveFilters && `(${[
+              searchTerm && 'Search',
+              statusFilter !== 'all' && 'Status',
+              protocolFilter !== 'all' && 'Protocol',
+              categoryFilter !== 'all' && 'Category',
+              groupFilter !== 'all' && 'Group'
+            ].filter(Boolean).length})`}
+          </Button>
+          {hasActiveFilters && (
+            <Button
+              variant="outlined"
+              startIcon={<ClearIcon />}
+              onClick={clearFilters}
+              size="small"
+            >
+              Clear
+            </Button>
+          )}
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleAddDevice}
+            disabled={loading}
+          >
+            Add Device
+          </Button>
+        </Box>
       </Box>
+
+      {/* Filters Section */}
+      <Collapse in={filtersExpanded}>
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Filter Devices
+          </Typography>
+          <Grid container spacing={2}>
+            {/* Search */}
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="Search devices"
+                placeholder="Search by name or unique ID..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+                size="small"
+              />
+            </Grid>
+
+            {/* Status Filter */}
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={statusFilter}
+                  label="Status"
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <MenuItem value="all">All Status</MenuItem>
+                  <MenuItem value="online">Online</MenuItem>
+                  <MenuItem value="offline">Offline</MenuItem>
+                  <MenuItem value="enabled">Enabled</MenuItem>
+                  <MenuItem value="disabled">Disabled</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Protocol Filter */}
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Protocol</InputLabel>
+                <Select
+                  value={protocolFilter}
+                  label="Protocol"
+                  onChange={(e) => setProtocolFilter(e.target.value)}
+                >
+                  <MenuItem value="all">All Protocols</MenuItem>
+                  {uniqueProtocols.map(protocol => (
+                    <MenuItem key={protocol} value={protocol}>
+                      {protocol}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Category Filter */}
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Category</InputLabel>
+                <Select
+                  value={categoryFilter}
+                  label="Category"
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                >
+                  <MenuItem value="all">All Categories</MenuItem>
+                  {uniqueCategories.map(category => (
+                    <MenuItem key={category} value={category}>
+                      {category}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Group Filter */}
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Group</InputLabel>
+                <Select
+                  value={groupFilter}
+                  label="Group"
+                  onChange={(e) => setGroupFilter(e.target.value)}
+                >
+                  <MenuItem value="all">All Groups</MenuItem>
+                  {uniqueGroups.map(group => (
+                    <MenuItem key={group} value={group}>
+                      {group}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </Paper>
+      </Collapse>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -192,7 +409,7 @@ const Devices: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {devices.map((device) => (
+            {filteredDevices.map((device) => (
               <TableRow key={device.id} hover>
                 <TableCell>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -290,11 +507,23 @@ const Devices: React.FC = () => {
         </Table>
       </TableContainer>
 
-      {devices.length === 0 && !loading && (
+      {filteredDevices.length === 0 && !loading && (
         <Paper sx={{ p: 4, textAlign: 'center', mt: 2 }}>
           <Typography variant="body1" color="text.secondary">
-            No devices found. Click "Add Device" to get started.
+            {hasActiveFilters 
+              ? 'No devices match the current filters. Try adjusting your search criteria.'
+              : 'No devices found. Click "Add Device" to get started.'
+            }
           </Typography>
+          {hasActiveFilters && (
+            <Button
+              variant="outlined"
+              onClick={clearFilters}
+              sx={{ mt: 2 }}
+            >
+              Clear Filters
+            </Button>
+          )}
         </Paper>
       )}
 
