@@ -205,6 +205,7 @@ export const useUsers = () => {
   };
 
   const updateUser = async (userId: number, userData: UserUpdate): Promise<User | null> => {
+    console.log('updateUser called with:', { userId, userData });
     try {
       const response = await fetch(`${API_ENDPOINTS.USERS}/${userId}`, {
         method: 'PUT',
@@ -215,15 +216,20 @@ export const useUsers = () => {
         body: JSON.stringify(userData),
       });
 
+      console.log('Update response status:', response.status);
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Update error:', errorData);
         throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
       }
 
       const updatedUser = await response.json();
+      console.log('Updated user received:', updatedUser);
       setUsers(prev => prev.map(user => user.id === userId ? updatedUser : user));
       return updatedUser;
     } catch (err) {
+      console.error('Update user error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
       return null;
     }
@@ -253,6 +259,7 @@ export const useUsers = () => {
   };
 
   const fetchUserPermissions = async (userId: number): Promise<UserPermission | null> => {
+    console.log('fetchUserPermissions called with userId:', userId);
     try {
       const response = await fetch(`${API_ENDPOINTS.USERS}/${userId}/permissions`, {
         headers: {
@@ -261,12 +268,19 @@ export const useUsers = () => {
         },
       });
 
+      console.log('Permissions response status:', response.status);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Permissions error response:', errorText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      return await response.json();
+      const permissions = await response.json();
+      console.log('Permissions received:', permissions);
+      return permissions;
     } catch (err) {
+      console.error('Fetch permissions error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
       return null;
     }
