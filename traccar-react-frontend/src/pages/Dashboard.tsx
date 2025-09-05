@@ -32,14 +32,15 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
   return (
     <Card sx={{ 
       height: '100%',
-      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-      backdropFilter: 'blur(10px)',
-      border: '1px solid rgba(255, 255, 255, 0.2)',
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      backdropFilter: 'blur(15px)',
+      border: '1px solid rgba(255, 255, 255, 0.3)',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
       '&:hover': {
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        backgroundColor: 'rgba(255, 255, 255, 1)',
         transform: 'translateY(-2px)',
         transition: 'all 0.3s ease',
+        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.25)',
       }
     }}>
       <CardContent>
@@ -54,16 +55,16 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
               alignItems: 'center',
               justifyContent: 'center',
               color: 'white',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
             }}
           >
             {icon}
           </Box>
           <Box>
-            <Typography variant="h4" component="div" fontWeight="bold" color="text.primary">
+            <Typography variant="h4" component="div" fontWeight="bold" color="rgba(0, 0, 0, 0.87)">
               {value}
             </Typography>
-            <Typography variant="body2" color="text.secondary" fontWeight="medium">
+            <Typography variant="body2" color="rgba(0, 0, 0, 0.6)" fontWeight="medium">
               {title}
             </Typography>
           </Box>
@@ -275,26 +276,26 @@ const Dashboard: React.FC = () => {
         </Grid>
       </Box>
 
-      {/* Recent Activity Panel - Overlay */}
+      {/* Recent Activity Panel - Bottom Left */}
       <Box sx={{ 
         position: 'absolute', 
-        top: 20, 
-        right: 20, 
-        width: 320,
+        bottom: 20, 
+        left: 20, 
+        width: 350,
         zIndex: 10 
       }}>
         <Paper sx={{ 
           p: 2,
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(15px)',
+          border: '1px solid rgba(255, 255, 255, 0.3)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
           borderRadius: '12px'
         }}>
-          <Typography variant="h6" gutterBottom fontWeight="bold">
+          <Typography variant="h6" gutterBottom fontWeight="bold" color="rgba(0, 0, 0, 0.87)">
             Recent Activity
           </Typography>
-          <Box sx={{ mt: 2, maxHeight: 300, overflowY: 'auto' }}>
+          <Box sx={{ mt: 2, maxHeight: 250, overflowY: 'auto' }}>
             {mapPositions.length > 0 ? (
               <Box>
                 {mapPositions.slice(0, 5).map((position) => {
@@ -307,18 +308,19 @@ const Dashboard: React.FC = () => {
                         p: 2, 
                         border: '1px solid rgba(0, 0, 0, 0.1)', 
                         borderRadius: '8px',
-                        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.7)',
                         '&:hover': {
-                          backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                          backgroundColor: 'rgba(255, 255, 255, 0.9)',
                           transform: 'translateY(-1px)',
                           transition: 'all 0.2s ease',
+                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
                         }
                       }}
                     >
-                      <Typography variant="body2" fontWeight="bold" color="text.primary">
+                      <Typography variant="body2" fontWeight="bold" color="rgba(0, 0, 0, 0.87)">
                         {device?.name || 'Unknown Device'}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" color="rgba(0, 0, 0, 0.6)">
                         {position.speed} km/h • {new Date(position.fixTime).toLocaleTimeString()}
                       </Typography>
                     </Box>
@@ -326,7 +328,7 @@ const Dashboard: React.FC = () => {
                 })}
               </Box>
             ) : (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="rgba(0, 0, 0, 0.6)">
                 No recent activity to display
               </Typography>
             )}
