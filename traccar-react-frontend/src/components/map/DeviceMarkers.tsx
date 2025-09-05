@@ -152,34 +152,42 @@ const DeviceMarkers: React.FC<DeviceMarkersProps> = ({
 
     // Cleanup
     return () => {
-      if (map.getLayer(`${layerId}-labels`)) {
-        map.removeLayer(`${layerId}-labels`);
-      }
-      if (map.getLayer(selectedLayerId)) {
-        map.removeLayer(selectedLayerId);
-      }
-      if (map.getLayer(layerId)) {
-        map.removeLayer(layerId);
-      }
-      if (map.getSource(sourceId)) {
-        map.removeSource(sourceId);
-      }
+      // Check if map still exists before trying to access its methods
+      if (!map || !map.getLayer) return;
       
-      map.off('click', layerId, handleClick);
-      map.off('click', selectedLayerId, handleClick);
-      map.off('mouseenter', layerId, handleMouseEnter);
-      map.off('mouseenter', selectedLayerId, handleMouseEnter);
-      map.off('mouseleave', layerId, handleMouseLeave);
-      map.off('mouseleave', selectedLayerId, handleMouseLeave);
+      try {
+        // Remove layers if they exist
+        if (map.getLayer(selectedLayerId)) {
+          map.removeLayer(selectedLayerId);
+        }
+        if (map.getLayer(layerId)) {
+          map.removeLayer(layerId);
+        }
+        if (map.getSource(sourceId)) {
+          map.removeSource(sourceId);
+        }
+        
+        // Remove event listeners
+        map.off('click', layerId, handleClick);
+        map.off('click', selectedLayerId, handleClick);
+        map.off('mouseenter', layerId, handleMouseEnter);
+        map.off('mouseenter', selectedLayerId, handleMouseEnter);
+        map.off('mouseleave', layerId, handleMouseLeave);
+        map.off('mouseleave', selectedLayerId, handleMouseLeave);
+      } catch (error) {
+        // Silently handle cleanup errors when map is being destroyed
+        console.warn('Error during DeviceMarkers cleanup:', error);
+      }
     };
   }, [map, mapReady, sourceId, layerId, selectedLayerId, onMarkerClick]);
 
   // Update markers when positions or devices change
   useEffect(() => {
-    if (!map || !mapReady) return;
+    if (!map || !mapReady || !map.getSource) return;
 
-    const source = map.getSource(sourceId) as maplibregl.GeoJSONSource;
-    if (!source) return;
+    try {
+      const source = map.getSource(sourceId) as maplibregl.GeoJSONSource;
+      if (!source) return;
 
     const features = positions
       .filter(position => deviceMap[position.deviceId])
@@ -203,10 +211,14 @@ const DeviceMarkers: React.FC<DeviceMarkersProps> = ({
         };
       });
 
-    source.setData({
-      type: 'FeatureCollection',
-      features
-    });
+      source.setData({
+        type: 'FeatureCollection',
+        features
+      });
+    } catch (error) {
+      // Silently handle errors when map is being destroyed
+      console.warn('Error updating DeviceMarkers data:', error);
+    }
   }, [map, mapReady, positions, devices, deviceMap, selectedDeviceId, sourceId]);
 
   return null;
