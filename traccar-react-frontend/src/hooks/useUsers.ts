@@ -180,6 +180,7 @@ export const useUsers = () => {
   };
 
   const createUser = async (userData: UserCreate): Promise<User | null> => {
+    console.log('createUser called with:', userData);
     try {
       const response = await fetch(API_ENDPOINTS.USERS, {
         method: 'POST',
@@ -190,15 +191,20 @@ export const useUsers = () => {
         body: JSON.stringify(userData),
       });
 
+      console.log('Create user response status:', response.status);
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Create user error:', errorData);
         throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
       }
 
       const newUser = await response.json();
+      console.log('New user created:', newUser);
       setUsers(prev => [...prev, newUser]);
       return newUser;
     } catch (err) {
+      console.error('Create user error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
       return null;
     }
@@ -253,7 +259,6 @@ export const useUsers = () => {
   };
 
   const fetchUserPermissions = async (userId: number): Promise<UserPermission | null> => {
-    console.log('fetchUserPermissions called with userId:', userId);
     try {
       const response = await fetch(`${API_ENDPOINTS.USERS}/${userId}/permissions`, {
         headers: {
@@ -262,19 +267,12 @@ export const useUsers = () => {
         },
       });
 
-      console.log('Permissions response status:', response.status);
-
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Permissions error response:', errorText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const permissions = await response.json();
-      console.log('Permissions received:', permissions);
-      return permissions;
+      return await response.json();
     } catch (err) {
-      console.error('Fetch permissions error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
       return null;
     }

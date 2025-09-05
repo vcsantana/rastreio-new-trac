@@ -118,8 +118,11 @@ const Users: React.FC = () => {
   };
 
   const handleCreateUser = async () => {
+    console.log('handleCreateUser called with formData:', formData);
+    
     // Validate required fields
     if (!formData.email || !formData.name || !formData.password) {
+      console.log('Validation failed - missing required fields');
       setError('Please fill in all required fields');
       return;
     }
@@ -128,8 +131,12 @@ const Users: React.FC = () => {
     setError(null);
     
     try {
+      console.log('Calling createUser with:', formData);
       const newUser = await createUser(formData);
+      console.log('createUser result:', newUser);
+      
       if (newUser) {
+        console.log('User created successfully, closing dialog');
         setCreateDialogOpen(false);
         setFormData({
           email: '',
@@ -141,7 +148,11 @@ const Users: React.FC = () => {
           user_limit: 0,
         });
         loadData();
+      } else {
+        console.log('User creation failed - newUser is null');
       }
+    } catch (error) {
+      console.error('Error in handleCreateUser:', error);
     } finally {
       setActionLoading(false);
     }
@@ -323,7 +334,10 @@ const Users: React.FC = () => {
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => setCreateDialogOpen(true)}
+          onClick={() => {
+            console.log('Add User button clicked');
+            setCreateDialogOpen(true);
+          }}
         >
           Add User
         </Button>
@@ -522,7 +536,10 @@ const Users: React.FC = () => {
       </Menu>
 
       {/* Create User Dialog */}
-      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={createDialogOpen} onClose={() => {
+        console.log('Create dialog closed');
+        setCreateDialogOpen(false);
+      }} maxWidth="md" fullWidth>
         <DialogTitle>Create New User</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
