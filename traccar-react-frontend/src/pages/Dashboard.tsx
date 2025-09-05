@@ -20,7 +20,6 @@ import MapView from '../components/map/MapView';
 import { useWebSocket, usePositionUpdates, useDeviceStatusUpdates } from '../hooks/useWebSocket';
 import { useDevices } from '../hooks/useDevices';
 import { usePositions } from '../hooks/usePositions';
-import { WebSocketTestPanel } from '../components/common/WebSocketTestPanel';
 
 interface StatCardProps {
   title: string;
@@ -31,7 +30,18 @@ interface StatCardProps {
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
   return (
-    <Card sx={{ height: '100%' }}>
+    <Card sx={{ 
+      height: '100%',
+      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+      backdropFilter: 'blur(10px)',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+      '&:hover': {
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        transform: 'translateY(-2px)',
+        transition: 'all 0.3s ease',
+      }
+    }}>
       <CardContent>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Box
@@ -44,15 +54,16 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
               alignItems: 'center',
               justifyContent: 'center',
               color: 'white',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
             }}
           >
             {icon}
           </Box>
           <Box>
-            <Typography variant="h4" component="div" fontWeight="bold">
+            <Typography variant="h4" component="div" fontWeight="bold" color="text.primary">
               {value}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" fontWeight="medium">
               {title}
             </Typography>
           </Box>
@@ -179,94 +190,149 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <Box>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Dashboard
-      </Typography>
-      
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        {stats.map((stat, index) => (
-          <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
-            <StatCard {...stat} />
-          </Grid>
-        ))}
-      </Grid>
-
-      <Grid container spacing={3}>
-        <Grid size={{ xs: 12, lg: 8 }}>
-          <Paper sx={{ p: 2, height: 500 }}>
-            <Typography variant="h6" gutterBottom>
-              Live Map View
+    <Box sx={{ 
+      position: 'relative', 
+      height: '100vh', 
+      overflow: 'hidden',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+    }}>
+      {/* Full-screen Map */}
+      <Box sx={{ 
+        position: 'absolute', 
+        top: 0, 
+        left: 0, 
+        right: 0, 
+        bottom: 0,
+        zIndex: 1
+      }}>
+        {mapPositions.length > 0 ? (
+          <MapView
+            positions={mapPositions}
+            devices={mapDevices}
+            selectedDeviceId={selectedDeviceId}
+            onDeviceSelect={setSelectedDeviceId}
+            style={{ width: '100%', height: '100%' }}
+          />
+        ) : (
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            height: '100%',
+            flexDirection: 'column',
+            gap: 2,
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+          }}>
+            <LocationIcon sx={{ fontSize: 64, color: 'rgba(255, 255, 255, 0.7)' }} />
+            <Typography variant="h4" color="rgba(255, 255, 255, 0.9)" fontWeight="bold">
+              No device positions available
             </Typography>
-            <Box sx={{ height: 'calc(100% - 40px)', borderRadius: 1, overflow: 'hidden' }}>
-              {mapPositions.length > 0 ? (
-                <MapView
-                  positions={mapPositions}
-                  devices={mapDevices}
-                  selectedDeviceId={selectedDeviceId}
-                  onDeviceSelect={setSelectedDeviceId}
-                  style={{ width: '100%', height: '100%' }}
-                />
-              ) : (
-                <Box sx={{ 
-                  display: 'flex', 
-                  justifyContent: 'center', 
-                  alignItems: 'center', 
-                  height: '100%',
-                  flexDirection: 'column',
-                  gap: 2
-                }}>
-                  <LocationIcon sx={{ fontSize: 48, color: 'text.secondary' }} />
-                  <Typography variant="h6" color="text.secondary">
-                    No device positions available
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Connect devices to see them on the map
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-          </Paper>
-        </Grid>
-        
-        <Grid size={{ xs: 12, lg: 4 }}>
-          <Paper sx={{ p: 3, height: 500 }}>
-            <Typography variant="h6" gutterBottom>
-              Recent Activity
+            <Typography variant="h6" color="rgba(255, 255, 255, 0.7)">
+              Connect devices to see them on the map
             </Typography>
-            <Box sx={{ mt: 2 }}>
-              {mapPositions.length > 0 ? (
-                <Box>
-                  {mapPositions.slice(0, 5).map((position) => {
-                    const device = mapDevices.find(d => d.id === position.deviceId);
-                    return (
-                      <Box key={position.id} sx={{ mb: 2, p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-                        <Typography variant="body2" fontWeight="bold">
-                          {device?.name || 'Unknown Device'}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {position.speed} km/h • {new Date(position.fixTime).toLocaleTimeString()}
-                        </Typography>
-                      </Box>
-                    );
-                  })}
-                </Box>
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  No recent activity to display
-                </Typography>
-              )}
-            </Box>
-          </Paper>
-        </Grid>
-      </Grid>
+          </Box>
+        )}
+      </Box>
 
-      {/* WebSocket Test Panel - Only show in development */}
-      {process.env.NODE_ENV === 'development' && (
-        <Box sx={{ mt: 3 }}>
-          <WebSocketTestPanel />
-        </Box>
-      )}
+      {/* Dashboard Title - Overlay */}
+      <Box sx={{ 
+        position: 'absolute', 
+        top: 20, 
+        left: 20, 
+        zIndex: 10 
+      }}>
+        <Typography 
+          variant="h3" 
+          component="h1" 
+          sx={{ 
+            color: 'white',
+            fontWeight: 'bold',
+            textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+            background: 'rgba(0, 0, 0, 0.2)',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            backdropFilter: 'blur(10px)'
+          }}
+        >
+          Dashboard
+        </Typography>
+      </Box>
+
+      {/* Statistics Cards - Overlay */}
+      <Box sx={{ 
+        position: 'absolute', 
+        top: 100, 
+        left: 20, 
+        right: 20, 
+        zIndex: 10 
+      }}>
+        <Grid container spacing={2}>
+          {stats.map((stat, index) => (
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
+              <StatCard {...stat} />
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
+
+      {/* Recent Activity Panel - Overlay */}
+      <Box sx={{ 
+        position: 'absolute', 
+        top: 20, 
+        right: 20, 
+        width: 320,
+        zIndex: 10 
+      }}>
+        <Paper sx={{ 
+          p: 2,
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+          borderRadius: '12px'
+        }}>
+          <Typography variant="h6" gutterBottom fontWeight="bold">
+            Recent Activity
+          </Typography>
+          <Box sx={{ mt: 2, maxHeight: 300, overflowY: 'auto' }}>
+            {mapPositions.length > 0 ? (
+              <Box>
+                {mapPositions.slice(0, 5).map((position) => {
+                  const device = mapDevices.find(d => d.id === position.deviceId);
+                  return (
+                    <Box 
+                      key={position.id} 
+                      sx={{ 
+                        mb: 2, 
+                        p: 2, 
+                        border: '1px solid rgba(0, 0, 0, 0.1)', 
+                        borderRadius: '8px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+                        '&:hover': {
+                          backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                          transform: 'translateY(-1px)',
+                          transition: 'all 0.2s ease',
+                        }
+                      }}
+                    >
+                      <Typography variant="body2" fontWeight="bold" color="text.primary">
+                        {device?.name || 'Unknown Device'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {position.speed} km/h • {new Date(position.fixTime).toLocaleTimeString()}
+                      </Typography>
+                    </Box>
+                  );
+                })}
+              </Box>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                No recent activity to display
+              </Typography>
+            )}
+          </Box>
+        </Paper>
+      </Box>
     </Box>
   );
 };
