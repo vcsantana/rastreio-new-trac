@@ -5,14 +5,18 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Clean npm cache and install dependencies
+RUN npm cache clean --force && \
+    npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
+
+# Copy environment file
+COPY env.development .env.development
 
 # Expose port
 EXPOSE 3000
 
 # Command will be overridden in docker-compose
-CMD ["npm", "run", "dev"]
+CMD ["npx", "vite", "--host"]
