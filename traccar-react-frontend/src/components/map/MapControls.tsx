@@ -90,7 +90,7 @@ const MapControls: React.FC<MapControlsProps> = ({
     <Box
       sx={{
         position: 'absolute',
-        top: 16,
+        top: 120,
         left: 16,
         zIndex: 1000,
         display: 'flex',
