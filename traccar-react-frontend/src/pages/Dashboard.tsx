@@ -7,6 +7,8 @@ import {
   Typography,
   Paper,
   useTheme,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
 import {
   DeviceHub as DevicesIcon,
@@ -16,6 +18,8 @@ import {
 } from '@mui/icons-material';
 import MapView from '../components/map/MapView';
 import { useWebSocket, usePositionUpdates, useDeviceStatusUpdates } from '../hooks/useWebSocket';
+import { useDevices } from '../hooks/useDevices';
+import { usePositions } from '../hooks/usePositions';
 import { WebSocketTestPanel } from '../components/common/WebSocketTestPanel';
 
 interface StatCardProps {
@@ -62,9 +66,13 @@ const Dashboard: React.FC = () => {
   const theme = useTheme();
   const [selectedDeviceId, setSelectedDeviceId] = useState<number | undefined>();
   
+  // Real data hooks
+  const { devices, loading: devicesLoading, error: devicesError } = useDevices();
+  const { latestPositions, loading: positionsLoading, error: positionsError } = usePositions();
+  
   // WebSocket hooks for real-time updates
   const { connected, subscribe, unsubscribe } = useWebSocket();
-  const { positions, lastPosition } = usePositionUpdates();
+  const { positions: wsPositions, lastPosition } = usePositionUpdates();
   const { deviceUpdates, lastDeviceUpdate } = useDeviceStatusUpdates();
 
   // Subscribe to real-time updates when component mounts
@@ -82,94 +90,44 @@ const Dashboard: React.FC = () => {
     }
   }, [connected]); // Removed subscribe/unsubscribe from dependencies to prevent re-renders
 
-  // Mock device data - replace with real API calls (memoized to prevent re-renders)
-  const mockDevices = useMemo(() => [
-    {
-      id: 1,
-      name: 'Vehicle 001',
-      status: 'online',
-      category: 'car',
-      lastUpdate: new Date().toISOString(),
-    },
-    {
-      id: 2,
-      name: 'Truck 002',
-      status: 'offline',
-      category: 'truck',
-      lastUpdate: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-    },
-    {
-      id: 3,
-      name: 'Motorcycle 003',
-      status: 'online',
-      category: 'motorcycle',
-      lastUpdate: new Date(Date.now() - 1800000).toISOString(), // 30 minutes ago
-    },
-    {
-      id: 4,
-      name: 'Delivery Van 004',
-      status: 'online',
-      category: 'van',
-      lastUpdate: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
-    },
-  ], []);
+  // Transform real data for map display (memoized to prevent re-renders)
+  const mapDevices = useMemo(() => 
+    devices.map(device => ({
+      id: device.id,
+      name: device.name,
+      status: device.status,
+      category: device.category || 'unknown',
+      lastUpdate: device.last_update || new Date().toISOString(),
+    })), 
+    [devices]
+  );
 
-  // Mock position data - replace with real API calls (memoized to prevent re-renders)
-  const mockPositions = useMemo(() => [
-    {
-      id: 1,
-      deviceId: 1,
-      latitude: -23.5505,
-      longitude: -46.6333,
-      course: 45,
-      speed: 60,
-      fixTime: new Date().toISOString(),
-      attributes: { battery: 85, signal: -65 },
-    },
-    {
-      id: 2,
-      deviceId: 2,
-      latitude: -23.5485,
-      longitude: -46.6365,
-      course: 180,
-      speed: 0,
-      fixTime: new Date(Date.now() - 3600000).toISOString(),
-      attributes: { battery: 45, signal: -78 },
-    },
-    {
-      id: 3,
-      deviceId: 3,
-      latitude: -23.5525,
-      longitude: -46.6355,
-      course: 90,
-      speed: 35,
-      fixTime: new Date(Date.now() - 1800000).toISOString(),
-      attributes: { battery: 92, signal: -58 },
-    },
-    {
-      id: 4,
-      deviceId: 4,
-      latitude: -23.5495,
-      longitude: -46.6345,
-      course: 270,
-      speed: 25,
-      fixTime: new Date(Date.now() - 300000).toISOString(),
-      attributes: { battery: 78, signal: -70 },
-    },
-  ], []);
+  const mapPositions = useMemo(() => 
+    latestPositions.map(position => ({
+      id: position.id,
+      deviceId: position.device_id,
+      latitude: position.latitude,
+      longitude: position.longitude,
+      course: position.course || 0,
+      speed: position.speed || 0,
+      fixTime: position.device_time || position.server_time,
+      attributes: position.attributes || {},
+    })), 
+    [latestPositions]
+  );
 
-  // Calculate stats from mock data (memoized to prevent re-renders)
+  // Calculate stats from real data (memoized to prevent re-renders)
   const stats = useMemo(() => {
-    const onlineDevices = mockDevices.filter(d => d.status === 'online').length;
-    const avgSpeed = Math.round(
-      mockPositions.reduce((sum, pos) => sum + (pos.speed || 0), 0) / mockPositions.length
-    );
-    const totalDistance = mockPositions.reduce((sum, pos) => sum + (pos.speed || 0) * 0.5, 0); // Mock calculation
+    const onlineDevices = mapDevices.filter(d => d.status === 'online').length;
+    const avgSpeed = mapPositions.length > 0 
+      ? Math.round(mapPositions.reduce((sum, pos) => sum + (pos.speed || 0), 0) / mapPositions.length)
+      : 0;
+    const totalDistance = mapPositions.reduce((sum, pos) => sum + (pos.speed || 0) * 0.5, 0); // Mock calculation
 
     return [
       {
         title: 'Total Devices',
-        value: mockDevices.length,
+        value: mapDevices.length,
         icon: <DevicesIcon />,
         color: theme.palette.primary.main,
       },
@@ -192,7 +150,33 @@ const Dashboard: React.FC = () => {
         color: theme.palette.info.main,
       },
     ];
-  }, [mockDevices, mockPositions, theme.palette]);
+  }, [mapDevices, mapPositions, theme.palette]);
+
+  // Show loading state
+  if (devicesLoading || positionsLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <CircularProgress size={60} />
+        <Typography variant="h6" sx={{ ml: 2 }}>
+          Loading dashboard data...
+        </Typography>
+      </Box>
+    );
+  }
+
+  // Show error state
+  if (devicesError || positionsError) {
+    return (
+      <Box>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Dashboard
+        </Typography>
+        <Alert severity="error" sx={{ mb: 3 }}>
+          Error loading dashboard data: {devicesError || positionsError}
+        </Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -215,13 +199,32 @@ const Dashboard: React.FC = () => {
               Live Map View
             </Typography>
             <Box sx={{ height: 'calc(100% - 40px)', borderRadius: 1, overflow: 'hidden' }}>
-              <MapView
-                positions={mockPositions}
-                devices={mockDevices}
-                selectedDeviceId={selectedDeviceId}
-                onDeviceSelect={setSelectedDeviceId}
-                style={{ width: '100%', height: '100%' }}
-              />
+              {mapPositions.length > 0 ? (
+                <MapView
+                  positions={mapPositions}
+                  devices={mapDevices}
+                  selectedDeviceId={selectedDeviceId}
+                  onDeviceSelect={setSelectedDeviceId}
+                  style={{ width: '100%', height: '100%' }}
+                />
+              ) : (
+                <Box sx={{ 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  alignItems: 'center', 
+                  height: '100%',
+                  flexDirection: 'column',
+                  gap: 2
+                }}>
+                  <LocationIcon sx={{ fontSize: 48, color: 'text.secondary' }} />
+                  <Typography variant="h6" color="text.secondary">
+                    No device positions available
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Connect devices to see them on the map
+                  </Typography>
+                </Box>
+              )}
             </Box>
           </Paper>
         </Grid>
@@ -232,9 +235,27 @@ const Dashboard: React.FC = () => {
               Recent Activity
             </Typography>
             <Box sx={{ mt: 2 }}>
-              <Typography variant="body2" color="text.secondary">
-                No recent activity to display
-              </Typography>
+              {mapPositions.length > 0 ? (
+                <Box>
+                  {mapPositions.slice(0, 5).map((position) => {
+                    const device = mapDevices.find(d => d.id === position.deviceId);
+                    return (
+                      <Box key={position.id} sx={{ mb: 2, p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                        <Typography variant="body2" fontWeight="bold">
+                          {device?.name || 'Unknown Device'}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {position.speed} km/h • {new Date(position.fixTime).toLocaleTimeString()}
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+                </Box>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  No recent activity to display
+                </Typography>
+              )}
             </Box>
           </Paper>
         </Grid>

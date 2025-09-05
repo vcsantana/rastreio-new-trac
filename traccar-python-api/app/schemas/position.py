@@ -4,6 +4,7 @@ Position schemas
 from pydantic import BaseModel, validator
 from typing import Optional, Dict, Any
 from datetime import datetime
+import json
 
 class PositionBase(BaseModel):
     device_id: int
@@ -42,6 +43,15 @@ class PositionResponse(PositionBase):
     address: Optional[str] = None
     accuracy: Optional[float] = None
     attributes: Optional[Dict[str, Any]] = None
+    
+    @validator('attributes', pre=True)
+    def parse_attributes(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return {}
+        return v or {}
     
     class Config:
         from_attributes = True
