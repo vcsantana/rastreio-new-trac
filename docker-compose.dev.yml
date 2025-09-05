@@ -36,6 +36,7 @@ services:
       dockerfile: Dockerfile.dev
     ports:
       - "8000:8000"
+      - "5055:5055"
     environment:
       - DEBUG=true
       - DATABASE_URL=postgresql+asyncpg://traccar:traccar123@postgres:5432/traccar

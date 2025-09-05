@@ -11,7 +11,7 @@ import uvicorn
 
 from app.config import settings
 from app.database import init_db
-from app.api import auth, devices, positions, websocket, events, geofences, server, protocols, reports, groups, persons
+from app.api import auth, devices, positions, websocket, events, geofences, server, protocols, reports, groups, persons, logs
 # Import models to ensure they are registered with SQLAlchemy
 from app.models import user, device, position, event, geofence, report, group, person
 from app.models import server as server_model
@@ -136,6 +136,7 @@ app.include_router(geofences.router, prefix="/api", tags=["Geofences"])
 app.include_router(server.router, prefix="/api", tags=["Server"])
 app.include_router(protocols.router, prefix="/api/protocols", tags=["Protocols"])
 app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
+app.include_router(logs.router, tags=["Logs"])
 app.include_router(websocket.router, tags=["WebSocket"])
 
 # Startup and shutdown events

@@ -33,6 +33,7 @@ import {
   Logout as LogoutIcon,
   Brightness4 as DarkModeIcon,
   Brightness7 as LightModeIcon,
+  ListAlt as LogsIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -82,6 +83,12 @@ const navigationItems: NavigationItem[] = [
     label: 'Reports',
     path: '/reports',
     icon: <ReportsIcon />,
+  },
+  {
+    id: 'logs',
+    label: 'Logs',
+    path: '/logs',
+    icon: <LogsIcon />,
   },
   {
     id: 'settings',

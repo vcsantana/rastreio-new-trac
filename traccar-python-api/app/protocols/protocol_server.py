@@ -13,6 +13,7 @@ from app.models import Device, Position, Event, User
 from app.schemas.position import PositionCreate
 from app.protocols.base import BaseProtocolHandler, ProtocolServer, ProtocolMessage
 from app.protocols.suntech import SuntechProtocolHandler
+from app.protocols.http_server import HTTPProtocolServer
 from app.services.websocket_service import websocket_service
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ class TraccarProtocolServer:
     def __init__(self):
         self.protocol_handlers: Dict[str, BaseProtocolHandler] = {}
         self.protocol_servers: Dict[str, ProtocolServer] = {}
+        self.http_servers: Dict[str, HTTPProtocolServer] = {}
         self.running = False
         self.tasks: List[asyncio.Task] = []
         
@@ -34,8 +36,11 @@ class TraccarProtocolServer:
     
     def _register_protocol_handlers(self):
         """Register available protocol handlers."""
+        from app.protocols.osmand import OsmAndProtocolHandler
+        
         self.protocol_handlers = {
             "suntech": SuntechProtocolHandler(),
+            "osmand": OsmAndProtocolHandler(),
             # Add more protocols here as they are implemented
             # "gt06": GT06ProtocolHandler(),
             # "h02": H02ProtocolHandler(),
@@ -52,19 +57,27 @@ class TraccarProtocolServer:
             port = self._get_default_port(protocol_name)
         
         handler = self.protocol_handlers[protocol_name]
-        server = TraccarProtocolServerWrapper(handler, host, port, protocol_type)
         
-        self.protocol_servers[protocol_name] = server
-        
-        if protocol_type.lower() == "tcp":
-            task = asyncio.create_task(server.start_tcp_server())
-        elif protocol_type.lower() == "udp":
-            task = asyncio.create_task(server.start_udp_server())
+        # Check if this is an HTTP-based protocol
+        if protocol_name == "osmand":
+            server = HTTPProtocolServer(handler, host, port)
+            self.http_servers[protocol_name] = server
+            await server.start()
+            logger.info(f"Started HTTP server for {protocol_name} on {host}:{port}")
         else:
-            raise ValueError(f"Unsupported protocol type: {protocol_type}")
-        
-        self.tasks.append(task)
-        logger.info(f"Started {protocol_type.upper()} server for {protocol_name} on {host}:{port}")
+            # TCP/UDP protocols
+            server = TraccarProtocolServerWrapper(handler, host, port, protocol_type)
+            self.protocol_servers[protocol_name] = server
+            
+            if protocol_type.lower() == "tcp":
+                task = asyncio.create_task(server.start_tcp_server())
+            elif protocol_type.lower() == "udp":
+                task = asyncio.create_task(server.start_udp_server())
+            else:
+                raise ValueError(f"Unsupported protocol type: {protocol_type}")
+            
+            self.tasks.append(task)
+            logger.info(f"Started {protocol_type.upper()} server for {protocol_name} on {host}:{port}")
     
     def _get_default_port(self, protocol_name: str) -> int:
         """Get default port for protocol."""
@@ -75,6 +88,7 @@ class TraccarProtocolServer:
             "meiligao": 5004,
             "teltonika": 5005,
             "concox": 5006,
+            "osmand": 5055,
         }
         return default_ports.get(protocol_name, 5000)
     
@@ -94,7 +108,12 @@ class TraccarProtocolServer:
         """Stop all protocol servers."""
         self.running = False
         
+        # Stop TCP/UDP servers
         for server in self.protocol_servers.values():
+            await server.stop()
+        
+        # Stop HTTP servers
+        for server in self.http_servers.values():
             await server.stop()
         
         # Cancel all tasks
@@ -106,12 +125,15 @@ class TraccarProtocolServer:
             await asyncio.gather(*self.tasks, return_exceptions=True)
         
         self.protocol_servers.clear()
+        self.http_servers.clear()
         self.tasks.clear()
         logger.info("All protocol servers stopped")
     
     def get_server_status(self) -> Dict[str, Dict[str, Any]]:
         """Get status of all protocol servers."""
         status = {}
+        
+        # TCP/UDP servers
         for protocol_name, server in self.protocol_servers.items():
             status[protocol_name] = {
                 "running": server.running,
@@ -120,6 +142,17 @@ class TraccarProtocolServer:
                 "protocol_type": getattr(server, 'protocol_type', 'tcp'),
                 "clients": len(server.clients),
             }
+        
+        # HTTP servers
+        for protocol_name, server in self.http_servers.items():
+            status[protocol_name] = {
+                "running": server.is_running(),
+                "host": server.host,
+                "port": server.port,
+                "protocol_type": "http",
+                "clients": 0,  # HTTP doesn't maintain persistent connections
+            }
+        
         return status
 
 

@@ -1,6 +1,7 @@
 # Protocols package
 from .base import BaseProtocolHandler, ProtocolServer, ProtocolMessage
 from .suntech import SuntechProtocolHandler
+from .osmand import OsmAndProtocolHandler
 from .protocol_server import (
     TraccarProtocolServer,
     protocol_server_manager,
@@ -14,6 +15,7 @@ __all__ = [
     "ProtocolServer", 
     "ProtocolMessage",
     "SuntechProtocolHandler",
+    "OsmAndProtocolHandler",
     "TraccarProtocolServer",
     "protocol_server_manager",
     "start_protocol_servers",

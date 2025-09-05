@@ -25,7 +25,7 @@ async def get_protocol_servers_status(
     current_user: User = Depends(get_current_user)
 ):
     """Get status of all protocol servers."""
-    if not current_user.admin:
+    if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required"
@@ -43,7 +43,7 @@ async def start_protocol_servers_endpoint(
     current_user: User = Depends(get_current_user)
 ):
     """Start all protocol servers."""
-    if not current_user.admin:
+    if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required"
@@ -68,7 +68,7 @@ async def stop_protocol_servers_endpoint(
     current_user: User = Depends(get_current_user)
 ):
     """Stop all protocol servers."""
-    if not current_user.admin:
+    if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required"
@@ -96,7 +96,7 @@ async def start_specific_protocol_server(
     current_user: User = Depends(get_current_user)
 ):
     """Start a specific protocol server."""
-    if not current_user.admin:
+    if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required"
@@ -133,7 +133,7 @@ async def stop_specific_protocol_server(
     current_user: User = Depends(get_current_user)
 ):
     """Stop a specific protocol server."""
-    if not current_user.admin:
+    if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required"
@@ -166,7 +166,7 @@ async def get_available_protocols(
     current_user: User = Depends(get_current_user)
 ):
     """Get list of available protocol handlers."""
-    if not current_user.admin:
+    if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required"
@@ -193,7 +193,7 @@ async def test_protocol_connection(
     current_user: User = Depends(get_current_user)
 ):
     """Test connection to a specific protocol server."""
-    if not current_user.admin:
+    if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required"
@@ -248,7 +248,7 @@ async def get_protocol_logs(
     current_user: User = Depends(get_current_user)
 ):
     """Get logs for a specific protocol server."""
-    if not current_user.admin:
+    if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required"

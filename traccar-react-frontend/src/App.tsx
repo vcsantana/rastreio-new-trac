@@ -22,6 +22,7 @@ const Groups = React.lazy(() => import('./pages/Groups'));
 const Persons = React.lazy(() => import('./pages/Persons'));
 const Reports = React.lazy(() => import('./pages/Reports'));
 const Settings = React.lazy(() => import('./pages/Settings'));
+const LogsViewer = React.lazy(() => import('./components/LogsViewer'));
 const Login = React.lazy(() => import('./pages/Login'));
 
 function App() {
@@ -52,10 +53,11 @@ function App() {
                       >
                         <Route index element={<Navigate to="/dashboard" replace />} />
                         <Route path="dashboard" element={<Dashboard />} />
-                                        <Route path="devices" element={<Devices />} />
-                <Route path="groups" element={<Groups />} />
-                <Route path="persons" element={<Persons />} />
-                <Route path="reports" element={<Reports />} />
+                        <Route path="devices" element={<Devices />} />
+                        <Route path="groups" element={<Groups />} />
+                        <Route path="persons" element={<Persons />} />
+                        <Route path="reports" element={<Reports />} />
+                        <Route path="logs" element={<LogsViewer />} />
                         <Route path="settings" element={<Settings />} />
                       </Route>
                       
