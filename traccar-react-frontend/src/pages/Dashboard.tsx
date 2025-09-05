@@ -35,36 +35,36 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
       backgroundColor: 'rgba(255, 255, 255, 0.95)',
       backdropFilter: 'blur(15px)',
       border: '1px solid rgba(255, 255, 255, 0.3)',
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+      boxShadow: '0 6px 24px rgba(0, 0, 0, 0.15)',
       '&:hover': {
         backgroundColor: 'rgba(255, 255, 255, 1)',
-        transform: 'translateY(-2px)',
+        transform: 'translateY(-1px)',
         transition: 'all 0.3s ease',
-        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.25)',
+        boxShadow: '0 8px 28px rgba(0, 0, 0, 0.2)',
       }
     }}>
-      <CardContent sx={{ p: 1.5 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+      <CardContent sx={{ p: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Box
             sx={{
               backgroundColor: color,
               borderRadius: '50%',
-              width: 40,
-              height: 40,
+              width: 28,
+              height: 28,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: 'white',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
             }}
           >
             {icon}
           </Box>
           <Box>
-            <Typography variant="h6" component="div" fontWeight="bold" color="rgba(0, 0, 0, 0.87)">
+            <Typography variant="body1" component="div" fontWeight="bold" color="rgba(0, 0, 0, 0.87)">
               {value}
             </Typography>
-            <Typography variant="caption" color="rgba(0, 0, 0, 0.6)" fontWeight="medium">
+            <Typography variant="caption" color="rgba(0, 0, 0, 0.6)" fontWeight="medium" sx={{ fontSize: '0.7rem' }}>
               {title}
             </Typography>
           </Box>
@@ -252,51 +252,51 @@ const Dashboard: React.FC = () => {
         </Grid>
       </Box>
 
-      {/* Recent Activity Panel - Bottom Left */}
+      {/* Recent Activity Panel - Right Side */}
       <Box sx={{ 
         position: 'absolute', 
-        bottom: 20, 
-        left: 20, 
-        width: 350,
+        top: 80, 
+        right: 20, 
+        width: 300,
         zIndex: 10 
       }}>
         <Paper sx={{ 
-          p: 2,
+          p: 1.5,
           backgroundColor: 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(15px)',
           border: '1px solid rgba(255, 255, 255, 0.3)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-          borderRadius: '12px'
+          boxShadow: '0 6px 24px rgba(0, 0, 0, 0.15)',
+          borderRadius: '8px'
         }}>
-          <Typography variant="h6" gutterBottom fontWeight="bold" color="rgba(0, 0, 0, 0.87)">
+          <Typography variant="body1" gutterBottom fontWeight="bold" color="rgba(0, 0, 0, 0.87)">
             Recent Activity
           </Typography>
-          <Box sx={{ mt: 2, maxHeight: 250, overflowY: 'auto' }}>
+          <Box sx={{ mt: 1.5, maxHeight: 200, overflowY: 'auto' }}>
             {mapPositions.length > 0 ? (
               <Box>
-                {mapPositions.slice(0, 5).map((position) => {
+                {mapPositions.slice(0, 4).map((position) => {
                   const device = mapDevices.find(d => d.id === position.deviceId);
                   return (
                     <Box 
                       key={position.id} 
                       sx={{ 
-                        mb: 2, 
-                        p: 2, 
+                        mb: 1.5, 
+                        p: 1.5, 
                         border: '1px solid rgba(0, 0, 0, 0.1)', 
-                        borderRadius: '8px',
+                        borderRadius: '6px',
                         backgroundColor: 'rgba(255, 255, 255, 0.7)',
                         '&:hover': {
                           backgroundColor: 'rgba(255, 255, 255, 0.9)',
                           transform: 'translateY(-1px)',
                           transition: 'all 0.2s ease',
-                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
                         }
                       }}
                     >
-                      <Typography variant="body2" fontWeight="bold" color="rgba(0, 0, 0, 0.87)">
+                      <Typography variant="body2" fontWeight="bold" color="rgba(0, 0, 0, 0.87)" sx={{ fontSize: '0.8rem' }}>
                         {device?.name || 'Unknown Device'}
                       </Typography>
-                      <Typography variant="caption" color="rgba(0, 0, 0, 0.6)">
+                      <Typography variant="caption" color="rgba(0, 0, 0, 0.6)" sx={{ fontSize: '0.7rem' }}>
                         {position.speed} km/h • {new Date(position.fixTime).toLocaleTimeString()}
                       </Typography>
                     </Box>
@@ -304,7 +304,7 @@ const Dashboard: React.FC = () => {
                 })}
               </Box>
             ) : (
-              <Typography variant="body2" color="rgba(0, 0, 0, 0.6)">
+              <Typography variant="body2" color="rgba(0, 0, 0, 0.6)" sx={{ fontSize: '0.8rem' }}>
                 No recent activity to display
               </Typography>
             )}
