@@ -55,6 +55,7 @@ const Users: React.FC = () => {
     users,
     loading,
     error,
+    setError,
     fetchUsers,
     fetchUserStats,
     createUser,

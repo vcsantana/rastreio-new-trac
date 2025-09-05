@@ -305,6 +305,7 @@ export const useUsers = () => {
     users,
     loading,
     error,
+    setError,
     fetchUsers,
     fetchUserStats,
     fetchUser,
