@@ -96,11 +96,15 @@ const DeviceInfoCard: React.FC<DeviceInfoCardProps> = ({
         right: 16,
         width: 320,
         maxWidth: '90vw',
-        zIndex: 1000,
+        zIndex: 9999,
         maxHeight: '80vh',
-        overflow: 'auto'
+        overflow: 'auto',
+        backgroundColor: 'rgba(255, 255, 255, 0.98)',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.3)'
       }}
-      elevation={4}
+      elevation={8}
     >
       <CardContent>
         {/* Header */}
