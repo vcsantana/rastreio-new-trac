@@ -255,7 +255,7 @@ const Dashboard: React.FC = () => {
       {/* Recent Activity Panel - Right Side */}
       <Box sx={{ 
         position: 'absolute', 
-        top: 80, 
+        top: 200, 
         right: 20, 
         width: 300,
         zIndex: 10 

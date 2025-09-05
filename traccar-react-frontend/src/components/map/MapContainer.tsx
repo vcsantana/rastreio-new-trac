@@ -74,11 +74,6 @@ const MapContainer: React.FC<MapContainerProps> = ({
       new maplibregl.AttributionControl({ compact: true }),
       'bottom-right'
     );
-    
-    map.current.addControl(
-      new maplibregl.NavigationControl(),
-      'top-right'
-    );
 
     // Handle map load
     map.current.on('load', () => {
