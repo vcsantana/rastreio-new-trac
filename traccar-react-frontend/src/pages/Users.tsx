@@ -148,7 +148,6 @@ const Users: React.FC = () => {
   };
 
   const handleUpdateUser = async () => {
-    console.log('handleUpdateUser called with selectedUser:', selectedUser);
     if (!selectedUser) return;
     
     setActionLoading(true);
@@ -160,9 +159,7 @@ const Users: React.FC = () => {
         password: formData.password || undefined,
       };
       
-      console.log('Update data:', updateData);
       const updatedUser = await updateUser(selectedUser.id, updateData);
-      console.log('Update result:', updatedUser);
       
       if (updatedUser) {
         setEditDialogOpen(false);
@@ -186,26 +183,18 @@ const Users: React.FC = () => {
   };
 
   const handleViewPermissions = async (user: User) => {
-    console.log('handleViewPermissions called with user:', user);
     setSelectedUser(user);
     setPermissionsLoading(true);
     
     try {
-      console.log('Fetching permissions for user ID:', user.id);
       const permissions = await fetchUserPermissions(user.id);
-      console.log('Received permissions:', permissions);
       setUserPermissions(permissions);
       
       // Set current selections
       if (permissions) {
-        const deviceIds = permissions.device_permissions.map(d => d.id);
-        const groupIds = permissions.group_permissions.map(g => g.id);
-        const managedUserIds = permissions.managed_users.map(u => u.id);
-        
-        console.log('Setting selections:', { deviceIds, groupIds, managedUserIds });
-        setSelectedDeviceIds(deviceIds);
-        setSelectedGroupIds(groupIds);
-        setSelectedManagedUserIds(managedUserIds);
+        setSelectedDeviceIds(permissions.device_permissions.map(d => d.id));
+        setSelectedGroupIds(permissions.group_permissions.map(g => g.id));
+        setSelectedManagedUserIds(permissions.managed_users.map(u => u.id));
       }
       
       setPermissionsDialogOpen(true);
@@ -241,21 +230,18 @@ const Users: React.FC = () => {
   };
 
   const handleMenuClick = (event: React.MouseEvent<HTMLElement>, user: User) => {
-    console.log('handleMenuClick called with user:', user);
     setAnchorEl(event.currentTarget);
     setSelectedUser(user);
   };
 
   const handleMenuClose = () => {
-    console.log('handleMenuClose called');
     setAnchorEl(null);
     // Don't clear selectedUser immediately - let the individual handlers do it
   };
 
   const handleEditClick = () => {
-    console.log('handleEditClick called with selectedUser:', selectedUser);
     if (selectedUser) {
-      const formDataToSet = {
+      setFormData({
         email: selectedUser.email,
         name: selectedUser.name,
         password: '',
@@ -274,9 +260,7 @@ const Users: React.FC = () => {
         disable_reports: selectedUser.disable_reports || false,
         fixed_email: selectedUser.fixed_email || false,
         poi_layer: selectedUser.poi_layer || '',
-      };
-      console.log('Setting form data:', formDataToSet);
-      setFormData(formDataToSet);
+      });
       setEditDialogOpen(true);
       handleMenuClose();
     }
@@ -519,7 +503,6 @@ const Users: React.FC = () => {
           <ListItemText>Edit User</ListItemText>
         </MenuItem>
         <MenuItem onClick={() => {
-          console.log('View Permissions clicked for user:', selectedUser);
           handleViewPermissions(selectedUser!);
           handleMenuClose();
         }}>
