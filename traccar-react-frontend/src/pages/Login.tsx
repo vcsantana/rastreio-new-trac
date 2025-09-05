@@ -11,10 +11,12 @@ import {
   useTheme,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const Login: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -26,16 +28,10 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      // Mock login - replace with real API call
-      if (email === 'admin@traccar.org' && password === 'admin') {
-        // Store token in localStorage (replace with proper auth)
-        localStorage.setItem('token', 'mock-jwt-token');
-        navigate('/dashboard');
-      } else {
-        setError('Invalid email or password');
-      }
+      await login(email, password);
+      navigate('/dashboard');
     } catch (err) {
-      setError('Login failed. Please try again.');
+      setError('Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
