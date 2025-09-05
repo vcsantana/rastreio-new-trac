@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { API_ENDPOINTS, getAuthHeaders } from '../api/config';
+import { API_ENDPOINTS, getAuthHeaders } from '../api/apiConfig';
 
 export interface Device {
   id: number;
