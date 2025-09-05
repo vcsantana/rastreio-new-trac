@@ -53,14 +53,24 @@ async def lifespan(app: FastAPI):
     await init_db()
     logger.info("Database initialized")
     
-    # Start protocol servers (TODO: implement)
-    # await protocol_server_manager.start_all()
+    # Start protocol servers
+    try:
+        await start_protocol_servers()
+        logger.info("Protocol servers started successfully")
+    except Exception as e:
+        logger.error("Failed to start protocol servers", error=str(e))
+    
     logger.info("Application started")
     
     yield
     
     # Cleanup
-    # await protocol_server_manager.stop_all()
+    try:
+        await stop_protocol_servers()
+        logger.info("Protocol servers stopped successfully")
+    except Exception as e:
+        logger.error("Error stopping protocol servers", error=str(e))
+    
     logger.info("Application stopped")
     logger.info("Traccar Python API shutdown complete")
 
@@ -137,8 +147,11 @@ async def startup_event():
     logger.info("Database initialized")
     
     # Start protocol servers (optional, can be started manually via API)
-    # await start_protocol_servers()
-    # logger.info("Protocol servers started")
+    try:
+        await start_protocol_servers()
+        logger.info("Protocol servers started")
+    except Exception as e:
+        logger.error("Failed to start protocol servers", error=str(e))
 
 @app.on_event("shutdown")
 async def shutdown_event():

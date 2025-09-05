@@ -276,3 +276,77 @@ async def get_protocol_logs(
         "total_lines": len(mock_logs)
     }
 
+
+@router.post("/servers/start")
+async def start_protocol_servers_endpoint():
+    """Start all protocol servers."""
+    try:
+        from app.protocols import start_protocol_servers
+        await start_protocol_servers()
+        return {"message": "Protocol servers started successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to start protocol servers: {str(e)}")
+
+
+@router.post("/servers/stop")
+async def stop_protocol_servers_endpoint():
+    """Stop all protocol servers."""
+    try:
+        from app.protocols import stop_protocol_servers
+        await stop_protocol_servers()
+        return {"message": "Protocol servers stopped successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to stop protocol servers: {str(e)}")
+
+
+@router.get("/servers/status")
+async def get_protocol_servers_status():
+    """Get status of all protocol servers."""
+    try:
+        from app.protocols import get_protocol_server_status
+        status = get_protocol_server_status()
+        return {
+            "servers": status,
+            "total_servers": len(status),
+            "active_servers": sum(1 for server in status.values() if server.get("running", False))
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get server status: {str(e)}")
+
+
+@router.post("/servers/{protocol_name}/start")
+async def start_specific_protocol_server(
+    protocol_name: str,
+    host: str = "0.0.0.0",
+    port: int = None,
+    protocol_type: str = "tcp"
+):
+    """Start a specific protocol server."""
+    try:
+        from app.protocols import protocol_server_manager
+        await protocol_server_manager.start_protocol_server(protocol_name, host, port, protocol_type)
+        return {
+            "message": f"Protocol server {protocol_name} started successfully",
+            "protocol": protocol_name,
+            "host": host,
+            "port": port,
+            "type": protocol_type
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to start {protocol_name} server: {str(e)}")
+
+
+@router.post("/servers/{protocol_name}/stop")
+async def stop_specific_protocol_server(protocol_name: str):
+    """Stop a specific protocol server."""
+    try:
+        from app.protocols import protocol_server_manager
+        if protocol_name in protocol_server_manager.protocol_servers:
+            await protocol_server_manager.protocol_servers[protocol_name].stop()
+            del protocol_server_manager.protocol_servers[protocol_name]
+            return {"message": f"Protocol server {protocol_name} stopped successfully"}
+        else:
+            raise HTTPException(status_code=404, detail=f"Protocol server {protocol_name} not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to stop {protocol_name} server: {str(e)}")
+

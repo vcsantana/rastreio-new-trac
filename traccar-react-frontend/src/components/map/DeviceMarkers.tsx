@@ -1,4 +1,4 @@
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useMemo, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 
 interface Position {
@@ -41,11 +41,13 @@ const DeviceMarkers: React.FC<DeviceMarkersProps> = ({
   const layerId = useId();
   const selectedLayerId = useId();
 
-  // Create device lookup map
-  const deviceMap = devices.reduce((acc, device) => {
-    acc[device.id] = device;
-    return acc;
-  }, {} as Record<number, Device>);
+  // Create device lookup map (memoized)
+  const deviceMap = useMemo(() => {
+    return devices.reduce((acc, device) => {
+      acc[device.id] = device;
+      return acc;
+    }, {} as Record<number, Device>);
+  }, [devices]);
 
   useEffect(() => {
     if (!map || !mapReady) return;
@@ -97,24 +99,24 @@ const DeviceMarkers: React.FC<DeviceMarkersProps> = ({
       }
     });
 
-    // Add labels
-    map.addLayer({
-      id: `${layerId}-labels`,
-      type: 'symbol',
-      source: sourceId,
-      layout: {
-        'text-field': '{name}',
-        'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-        'text-size': 12,
-        'text-anchor': 'top',
-        'text-offset': [0, 1.5]
-      },
-      paint: {
-        'text-color': '#333333',
-        'text-halo-color': '#ffffff',
-        'text-halo-width': 1
-      }
-    });
+    // Add labels (commented out due to glyphs requirement)
+    // map.addLayer({
+    //   id: `${layerId}-labels`,
+    //   type: 'symbol',
+    //   source: sourceId,
+    //   layout: {
+    //     'text-field': '{name}',
+    //     'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+    //     'text-size': 12,
+    //     'text-anchor': 'top',
+    //     'text-offset': [0, 1.5]
+    //   },
+    //   paint: {
+    //     'text-color': '#333333',
+    //     'text-halo-color': '#ffffff',
+    //     'text-halo-width': 1
+    //   }
+    // });
 
     // Add click handlers
     const handleClick = (e: maplibregl.MapMouseEvent) => {

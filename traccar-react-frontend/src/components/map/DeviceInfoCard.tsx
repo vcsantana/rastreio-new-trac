@@ -10,11 +10,11 @@ import {
 } from '@mui/material';
 import {
   Close,
-  Speed,
-  Navigation,
-  AccessTime,
-  Battery,
-  SignalCellular4Bar
+  Speed as SpeedIcon,
+  Navigation as NavigationIcon,
+  AccessTime as AccessTimeIcon,
+  BatteryFull,
+  SignalCellular4Bar as SignalIcon
 } from '@mui/icons-material';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -130,21 +130,21 @@ const DeviceInfoCard: React.FC<DeviceInfoCardProps> = ({
             </Typography>
             
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <Speed sx={{ mr: 1, fontSize: 18 }} />
+              <SpeedIcon sx={{ mr: 1, fontSize: 18 }} />
               <Typography variant="body2">
                 Speed: {formatSpeed(position.speed)}
               </Typography>
             </Box>
 
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <Navigation sx={{ mr: 1, fontSize: 18 }} />
+              <NavigationIcon sx={{ mr: 1, fontSize: 18 }} />
               <Typography variant="body2">
                 Direction: {formatCourse(position.course)}
               </Typography>
             </Box>
 
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <AccessTime sx={{ mr: 1, fontSize: 18 }} />
+              <AccessTimeIcon sx={{ mr: 1, fontSize: 18 }} />
               <Typography variant="body2">
                 Last Update: {formatLastUpdate(position.fixTime)}
               </Typography>
@@ -186,7 +186,7 @@ const DeviceInfoCard: React.FC<DeviceInfoCardProps> = ({
               
               {getBatteryLevel() && (
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <Battery sx={{ mr: 1, fontSize: 18 }} />
+                  <BatteryFull sx={{ mr: 1, fontSize: 18 }} />
                   <Typography variant="body2">
                     Battery: {getBatteryLevel()}%
                   </Typography>
@@ -195,7 +195,7 @@ const DeviceInfoCard: React.FC<DeviceInfoCardProps> = ({
 
               {getSignalStrength() && (
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <SignalCellular4Bar sx={{ mr: 1, fontSize: 18 }} />
+                  <SignalIcon sx={{ mr: 1, fontSize: 18 }} />
                   <Typography variant="body2">
                     Signal: {getSignalStrength()} dBm
                   </Typography>

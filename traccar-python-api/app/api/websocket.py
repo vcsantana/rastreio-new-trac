@@ -239,223 +239,205 @@ async def get_websocket_stats():
     return manager.get_connection_stats()
 
 
-@router.post("/ws/broadcast")
-async def broadcast_message(
-    message_type: str,
-    data: dict,
-    subscription_type: Optional[str] = None,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+@router.post("/ws/simulate-gps-data")
+async def simulate_gps_data(
+    device_id: int = 1,
+    count: int = 10,
+    interval_seconds: float = 2.0,
+    db: AsyncSession = Depends(get_db)
 ):
-    """Broadcast message to WebSocket subscribers (admin only)."""
-    if not current_user.is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
+    """Simulate GPS data for testing WebSocket integration."""
+    import asyncio
+    from app.services.websocket_service import websocket_service
+    from app.models import Position, Device
+    from sqlalchemy import select
+    from datetime import datetime, timedelta
+    import random
     
-    message = {
-        "type": message_type,
-        "data": data,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-    
-    if subscription_type:
-        await manager.broadcast_to_subscribers(message, subscription_type)
-    else:
-        # Broadcast to all connected users
-        for user_id in manager.active_connections.keys():
-            await manager.send_personal_message(message, user_id)
-    
-    return {"message": "Broadcast sent successfully"}
+    try:
+        # Get device
+        result = await db.execute(select(Device).where(Device.id == device_id))
+        device = result.scalar_one_or_none()
+        if not device:
+            raise HTTPException(status_code=404, detail=f"Device {device_id} not found")
+        
+        # Simulate GPS positions
+        base_lat = -23.5505  # São Paulo coordinates
+        base_lon = -46.6333
+        
+        for i in range(count):
+            # Generate random position around base coordinates
+            lat = base_lat + random.uniform(-0.01, 0.01)
+            lon = base_lon + random.uniform(-0.01, 0.01)
+            
+            # Create position
+            position = Position(
+                device_id=device_id,
+                protocol="simulation",
+                latitude=lat,
+                longitude=lon,
+                altitude=random.uniform(700, 800),
+                speed=random.uniform(0, 60),
+                course=random.uniform(0, 360),
+                valid=True,
+                device_time=datetime.utcnow(),
+                server_time=datetime.utcnow(),
+                address=f"Simulated Address {i+1}",
+                attributes=f'{{"simulated": true, "test_run": {i+1}}}'
+            )
+            
+            db.add(position)
+            await db.commit()
+            await db.refresh(position)
+            
+            # Broadcast via WebSocket
+            await websocket_service.broadcast_position_update(position, device)
+            
+            # Wait before next position
+            if i < count - 1:
+                await asyncio.sleep(interval_seconds)
+        
+        return {
+            "message": f"Simulated {count} GPS positions for device {device_id}",
+            "device_id": device_id,
+            "positions_created": count,
+            "interval_seconds": interval_seconds
+        }
+        
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to simulate GPS data: {str(e)}")
 
 
 @router.post("/ws/test-position")
-async def test_position_broadcast(
-    device_id: int,
-    latitude: float,
-    longitude: float,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Test position broadcast (for development)."""
-    if not current_user.is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
+async def test_position_broadcast(device_id: int = 1, db: AsyncSession = Depends(get_db)):
+    """Test position broadcast via WebSocket."""
+    from app.services.websocket_service import websocket_service
+    from app.models import Position, Device
+    from sqlalchemy import select
+    from datetime import datetime
+    import random
+    
+    try:
+        # Get device
+        result = await db.execute(select(Device).where(Device.id == device_id))
+        device = result.scalar_one_or_none()
+        if not device:
+            raise HTTPException(status_code=404, detail=f"Device {device_id} not found")
+        
+        # Create test position
+        position = Position(
+            device_id=device_id,
+            protocol="test",
+            latitude=-23.5505 + random.uniform(-0.001, 0.001),
+            longitude=-46.6333 + random.uniform(-0.001, 0.001),
+            altitude=750.0,
+            speed=45.5,
+            course=180.0,
+            valid=True,
+            device_time=datetime.utcnow(),
+            server_time=datetime.utcnow(),
+            address="Test Position",
+            attributes='{"test": true}'
         )
-    
-    # Get device info
-    result = await db.execute(select(Device).where(Device.id == device_id))
-    device = result.scalar_one_or_none()
-    if not device:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Device not found"
-        )
-    
-    position_data = {
-        "device_id": device_id,
-        "device_name": device.name,
-        "latitude": latitude,
-        "longitude": longitude,
-        "altitude": 0,
-        "speed": 0,
-        "course": 0,
-        "address": "Test Location",
-        "valid": True,
-        "device_time": datetime.utcnow().isoformat(),
-        "server_time": datetime.utcnow().isoformat()
-    }
-    
-    await manager.broadcast_position(position_data, device_id)
-    
-    return {"message": "Test position broadcast sent", "data": position_data}
+        
+        db.add(position)
+        await db.commit()
+        await db.refresh(position)
+        
+        # Broadcast via WebSocket
+        await websocket_service.broadcast_position_update(position, device)
+        
+        return {
+            "message": "Test position broadcasted successfully",
+            "position_id": position.id,
+            "device_id": device_id,
+            "latitude": position.latitude,
+            "longitude": position.longitude
+        }
+        
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to test position broadcast: {str(e)}")
 
 
 @router.post("/ws/test-event")
-async def test_event_broadcast(
-    device_id: int,
-    event_type: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Test event broadcast (for development)."""
-    if not current_user.is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
+async def test_event_broadcast(device_id: int = 1, event_type: str = "deviceOnline", db: AsyncSession = Depends(get_db)):
+    """Test event broadcast via WebSocket."""
+    from app.services.websocket_service import websocket_service
+    from app.models import Event, Device
+    from sqlalchemy import select
+    from datetime import datetime
+    
+    try:
+        # Get device
+        result = await db.execute(select(Device).where(Device.id == device_id))
+        device = result.scalar_one_or_none()
+        if not device:
+            raise HTTPException(status_code=404, detail=f"Device {device_id} not found")
+        
+        # Create test event
+        event = Event(
+            type=event_type,
+            device_id=device_id,
+            event_time=datetime.utcnow(),
+            attributes='{"test": true, "simulated": true}'
         )
-    
-    # Get device info
-    result = await db.execute(select(Device).where(Device.id == device_id))
-    device = result.scalar_one_or_none()
-    if not device:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Device not found"
-        )
-    
-    event_data = {
-        "device_id": device_id,
-        "device_name": device.name,
-        "type": event_type,
-        "event_time": datetime.utcnow().isoformat(),
-        "server_time": datetime.utcnow().isoformat(),
-        "attributes": {}
-    }
-    
-    await manager.broadcast_event(event_data, device_id)
-    
-    return {"message": "Test event broadcast sent", "data": event_data}
+        
+        db.add(event)
+        await db.commit()
+        await db.refresh(event)
+        
+        # Broadcast via WebSocket
+        await websocket_service.broadcast_event_update(event, device)
+        
+        return {
+            "message": "Test event broadcasted successfully",
+            "event_id": event.id,
+            "device_id": device_id,
+            "event_type": event_type
+        }
+        
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to test event broadcast: {str(e)}")
 
 
 @router.post("/ws/test-device-status")
-async def test_device_status_broadcast(
-    device_id: int,
-    new_status: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Test device status broadcast (for development)."""
-    if not current_user.is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
+async def test_device_status_broadcast(device_id: int = 1, new_status: str = "online", db: AsyncSession = Depends(get_db)):
+    """Test device status broadcast via WebSocket."""
+    from app.services.websocket_service import websocket_service
+    from app.models import Device
+    from sqlalchemy import select
+    from datetime import datetime
     
-    # Get device info
-    result = await db.execute(select(Device).where(Device.id == device_id))
-    device = result.scalar_one_or_none()
-    if not device:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Device not found"
-        )
-    
-    old_status = device.status
-    device.status = new_status
-    device.last_update = datetime.utcnow()
-    await db.commit()
-    
-    device_data = {
-        "id": device_id,
-        "name": device.name,
-        "unique_id": device.unique_id,
-        "status": new_status,
-        "last_update": device.last_update.isoformat(),
-        "position_id": device.position_id,
-        "attributes": device.attributes or {},
-        "old_status": old_status
-    }
-    
-    await manager.broadcast_device_status(device_data, device_id)
-    
-    return {"message": "Test device status broadcast sent", "data": device_data}
-
-
-@router.post("/ws/simulate-gps-data")
-async def simulate_gps_data(
-    device_id: int,
-    latitude: float,
-    longitude: float,
-    speed: float = 0.0,
-    course: float = 0.0,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Simulate GPS data and broadcast via WebSocket (for development)."""
-    if not current_user.is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
-    
-    # Get device info
-    result = await db.execute(select(Device).where(Device.id == device_id))
-    device = result.scalar_one_or_none()
-    if not device:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Device not found"
-        )
-    
-    # Create a new position
-    position = Position(
-        device_id=device_id,
-        protocol="simulation",
-        latitude=latitude,
-        longitude=longitude,
-        altitude=0.0,
-        speed=speed,
-        course=course,
-        valid=True,
-        device_time=datetime.utcnow(),
-        server_time=datetime.utcnow(),
-        address="Simulated Location"
-    )
-    
-    db.add(position)
-    await db.commit()
-    await db.refresh(position)
-    
-    # Broadcast position update
-    position_data = {
-        "id": position.id,
-        "device_id": device_id,
-        "device_name": device.name,
-        "latitude": float(latitude),
-        "longitude": float(longitude),
-        "altitude": 0.0,
-        "speed": float(speed),
-        "course": float(course),
-        "address": "Simulated Location",
-        "valid": True,
-        "device_time": position.device_time.isoformat(),
-        "server_time": position.server_time.isoformat(),
-        "attributes": {}
-    }
-    
-    await manager.broadcast_position(position_data, device_id)
-    
-    return {"message": "GPS data simulated and broadcast", "data": position_data}
+    try:
+        # Get device
+        result = await db.execute(select(Device).where(Device.id == device_id))
+        device = result.scalar_one_or_none()
+        if not device:
+            raise HTTPException(status_code=404, detail=f"Device {device_id} not found")
+        
+        # Store old status
+        old_status = device.status
+        
+        # Update device status
+        device.status = new_status
+        device.last_update = datetime.utcnow()
+        
+        await db.commit()
+        await db.refresh(device)
+        
+        # Broadcast via WebSocket
+        await websocket_service.broadcast_device_status_update(device, old_status)
+        
+        return {
+            "message": "Test device status broadcasted successfully",
+            "device_id": device_id,
+            "old_status": old_status,
+            "new_status": new_status
+        }
+        
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to test device status broadcast: {str(e)}")

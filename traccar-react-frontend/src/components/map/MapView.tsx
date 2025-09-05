@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Box } from '@mui/material';
 import maplibregl from 'maplibre-gl';
 import MapContainer from './MapContainer';
@@ -92,9 +92,15 @@ const MapView: React.FC<MapViewProps> = ({
   const [mapStyle, setMapStyle] = useState<'streets' | 'satellite' | 'hybrid'>('streets');
   const [showTraffic, setShowTraffic] = useState(false);
 
-  // Find selected device and its position
-  const selectedDevice = devices.find(d => d.id === selectedDeviceId);
-  const selectedPosition = positions.find(p => p.deviceId === selectedDeviceId);
+  // Find selected device and its position (memoized to prevent re-renders)
+  const selectedDevice = useMemo(() => 
+    devices.find(d => d.id === selectedDeviceId), 
+    [devices, selectedDeviceId]
+  );
+  const selectedPosition = useMemo(() => 
+    positions.find(p => p.deviceId === selectedDeviceId), 
+    [positions, selectedDeviceId]
+  );
 
   const handleMapLoad = useCallback((mapInstance: maplibregl.Map) => {
     setMap(mapInstance);

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, ReactNode } from 'react';
+import React, { useRef, useEffect, useState, ReactNode, useMemo, useCallback } from 'react';
 import { Box } from '@mui/material';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -11,24 +11,22 @@ interface MapContainerProps {
   style?: React.CSSProperties;
 }
 
-// Default map styles
+// Default map styles - using a simple OSM style to avoid loading issues
 const DEFAULT_STYLE = {
   version: 8,
   sources: {
-    'osm-tiles': {
+    'osm': {
       type: 'raster',
-      tiles: [
-        'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-      ],
+      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
       tileSize: 256,
       attribution: '© OpenStreetMap contributors'
     }
   },
   layers: [
     {
-      id: 'osm-tiles',
+      id: 'osm',
       type: 'raster',
-      source: 'osm-tiles',
+      source: 'osm',
       minzoom: 0,
       maxzoom: 19
     }
@@ -46,16 +44,29 @@ const MapContainer: React.FC<MapContainerProps> = ({
   const map = useRef<maplibregl.Map | null>(null);
   const [mapReady, setMapReady] = useState(false);
 
+  // Memoize the map configuration to prevent unnecessary re-renders
+  const mapConfig = useMemo(() => ({
+    style: DEFAULT_STYLE,
+    center: initialCenter,
+    zoom: initialZoom,
+    attributionControl: false
+  }), [initialCenter, initialZoom]);
+
+  // Memoize the onMapLoad callback
+  const handleMapLoad = useCallback((mapInstance: maplibregl.Map) => {
+    setMapReady(true);
+    if (onMapLoad) {
+      onMapLoad(mapInstance);
+    }
+  }, [onMapLoad]);
+
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
     // Initialize the map
     map.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: DEFAULT_STYLE,
-      center: initialCenter,
-      zoom: initialZoom,
-      attributionControl: false
+      ...mapConfig
     });
 
     // Add controls
@@ -71,10 +82,7 @@ const MapContainer: React.FC<MapContainerProps> = ({
 
     // Handle map load
     map.current.on('load', () => {
-      setMapReady(true);
-      if (onMapLoad && map.current) {
-        onMapLoad(map.current);
-      }
+      handleMapLoad(map.current!);
     });
 
     // Cleanup function
@@ -82,9 +90,10 @@ const MapContainer: React.FC<MapContainerProps> = ({
       if (map.current) {
         map.current.remove();
         map.current = null;
+        setMapReady(false);
       }
     };
-  }, [initialCenter, initialZoom, onMapLoad]);
+  }, []); // Empty dependency array to prevent re-initialization
 
   // Provide map instance to children
   const childrenWithProps = React.Children.map(children, (child) => {

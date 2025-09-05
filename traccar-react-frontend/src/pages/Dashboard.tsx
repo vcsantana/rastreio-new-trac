@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Grid,
@@ -80,10 +80,10 @@ const Dashboard: React.FC = () => {
         unsubscribe('events');
       };
     }
-  }, [connected, subscribe, unsubscribe]);
+  }, [connected]); // Removed subscribe/unsubscribe from dependencies to prevent re-renders
 
-  // Mock device data - replace with real API calls
-  const mockDevices = [
+  // Mock device data - replace with real API calls (memoized to prevent re-renders)
+  const mockDevices = useMemo(() => [
     {
       id: 1,
       name: 'Vehicle 001',
@@ -112,10 +112,10 @@ const Dashboard: React.FC = () => {
       category: 'van',
       lastUpdate: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
     },
-  ];
+  ], []);
 
-  // Mock position data - replace with real API calls
-  const mockPositions = [
+  // Mock position data - replace with real API calls (memoized to prevent re-renders)
+  const mockPositions = useMemo(() => [
     {
       id: 1,
       deviceId: 1,
@@ -156,42 +156,43 @@ const Dashboard: React.FC = () => {
       fixTime: new Date(Date.now() - 300000).toISOString(),
       attributes: { battery: 78, signal: -70 },
     },
-  ];
+  ], []);
 
-  // Calculate stats from mock data
-  const onlineDevices = mockDevices.filter(d => d.status === 'online').length;
-  const avgSpeed = Math.round(
-    mockPositions.reduce((sum, pos) => sum + (pos.speed || 0), 0) / mockPositions.length
-  );
-  const totalDistance = mockPositions.reduce((sum, pos) => sum + (pos.speed || 0) * 0.5, 0); // Mock calculation
+  // Calculate stats from mock data (memoized to prevent re-renders)
+  const stats = useMemo(() => {
+    const onlineDevices = mockDevices.filter(d => d.status === 'online').length;
+    const avgSpeed = Math.round(
+      mockPositions.reduce((sum, pos) => sum + (pos.speed || 0), 0) / mockPositions.length
+    );
+    const totalDistance = mockPositions.reduce((sum, pos) => sum + (pos.speed || 0) * 0.5, 0); // Mock calculation
 
-  // Stats calculated from mock data
-  const stats = [
-    {
-      title: 'Total Devices',
-      value: mockDevices.length,
-      icon: <DevicesIcon />,
-      color: theme.palette.primary.main,
-    },
-    {
-      title: 'Online Devices',
-      value: onlineDevices,
-      icon: <LocationIcon />,
-      color: theme.palette.success.main,
-    },
-    {
-      title: 'Avg Speed',
-      value: `${avgSpeed} km/h`,
-      icon: <SpeedIcon />,
-      color: theme.palette.warning.main,
-    },
-    {
-      title: 'Total Distance',
-      value: `${Math.round(totalDistance)} km`,
-      icon: <TimelineIcon />,
-      color: theme.palette.info.main,
-    },
-  ];
+    return [
+      {
+        title: 'Total Devices',
+        value: mockDevices.length,
+        icon: <DevicesIcon />,
+        color: theme.palette.primary.main,
+      },
+      {
+        title: 'Online Devices',
+        value: onlineDevices,
+        icon: <LocationIcon />,
+        color: theme.palette.success.main,
+      },
+      {
+        title: 'Avg Speed',
+        value: `${avgSpeed} km/h`,
+        icon: <SpeedIcon />,
+        color: theme.palette.warning.main,
+      },
+      {
+        title: 'Total Distance',
+        value: `${Math.round(totalDistance)} km`,
+        icon: <TimelineIcon />,
+        color: theme.palette.info.main,
+      },
+    ];
+  }, [mockDevices, mockPositions, theme.palette]);
 
   return (
     <Box>
@@ -201,14 +202,14 @@ const Dashboard: React.FC = () => {
       
       <Grid container spacing={3} sx={{ mb: 3 }}>
         {stats.map((stat, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
             <StatCard {...stat} />
           </Grid>
         ))}
       </Grid>
 
       <Grid container spacing={3}>
-        <Grid item xs={12} lg={8}>
+        <Grid size={{ xs: 12, lg: 8 }}>
           <Paper sx={{ p: 2, height: 500 }}>
             <Typography variant="h6" gutterBottom>
               Live Map View
@@ -225,7 +226,7 @@ const Dashboard: React.FC = () => {
           </Paper>
         </Grid>
         
-        <Grid item xs={12} lg={4}>
+        <Grid size={{ xs: 12, lg: 4 }}>
           <Paper sx={{ p: 3, height: 500 }}>
             <Typography variant="h6" gutterBottom>
               Recent Activity

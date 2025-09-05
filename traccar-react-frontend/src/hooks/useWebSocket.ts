@@ -1,5 +1,5 @@
 import { useWebSocket as useWebSocketContext } from '../contexts/WebSocketContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 
 export const useWebSocket = () => {
   const {
@@ -26,6 +26,13 @@ export const useWebSocketSubscription = (subscriptionType: string) => {
   const { subscribe, unsubscribe, lastMessage } = useWebSocketContext();
   const [messages, setMessages] = useState<any[]>([]);
 
+  // Memoize the message handler to prevent unnecessary re-renders
+  const handleNewMessage = useCallback((newMessage: any) => {
+    if (newMessage && newMessage.type === subscriptionType) {
+      setMessages(prev => [...prev, newMessage]);
+    }
+  }, [subscriptionType]);
+
   useEffect(() => {
     if (subscriptionType) {
       subscribe(subscriptionType);
@@ -34,42 +41,53 @@ export const useWebSocketSubscription = (subscriptionType: string) => {
         unsubscribe(subscriptionType);
       };
     }
-  }, [subscriptionType, subscribe, unsubscribe]);
+  }, [subscriptionType]); // Removed subscribe/unsubscribe from dependencies
 
   useEffect(() => {
     if (lastMessage) {
-      setMessages(prev => [...prev, lastMessage]);
+      handleNewMessage(lastMessage);
     }
-  }, [lastMessage]);
+  }, [lastMessage, handleNewMessage]);
 
-  return {
+  // Memoize the return value to prevent unnecessary re-renders
+  return useMemo(() => ({
     messages,
     lastMessage,
-  };
+  }), [messages, lastMessage]);
 };
 
 // Hook for position updates
 export const usePositionUpdates = () => {
   const { messages, lastMessage } = useWebSocketSubscription('positions');
   
-  const positionMessages = messages.filter(msg => msg.type === 'position');
+  // Memoize the filtered messages to prevent unnecessary re-renders
+  const positionMessages = useMemo(() => 
+    messages.filter(msg => msg.type === 'position'), 
+    [messages]
+  );
   
-  return {
+  // Memoize the return value
+  return useMemo(() => ({
     positions: positionMessages.map(msg => msg.data),
     lastPosition: positionMessages[positionMessages.length - 1]?.data || null,
-  };
+  }), [positionMessages]);
 };
 
 // Hook for device status updates
 export const useDeviceStatusUpdates = () => {
   const { messages, lastMessage } = useWebSocketSubscription('devices');
   
-  const deviceMessages = messages.filter(msg => msg.type === 'device_status');
+  // Memoize the filtered messages to prevent unnecessary re-renders
+  const deviceMessages = useMemo(() => 
+    messages.filter(msg => msg.type === 'device_status'), 
+    [messages]
+  );
   
-  return {
+  // Memoize the return value
+  return useMemo(() => ({
     deviceUpdates: deviceMessages.map(msg => msg.data),
     lastDeviceUpdate: deviceMessages[deviceMessages.length - 1]?.data || null,
-  };
+  }), [deviceMessages]);
 };
 
 // Hook for event updates

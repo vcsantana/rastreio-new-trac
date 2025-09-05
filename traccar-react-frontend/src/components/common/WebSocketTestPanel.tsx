@@ -127,7 +127,7 @@ export const WebSocketTestPanel: React.FC<WebSocketTestPanelProps> = ({ onClose 
         )}
 
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               fullWidth
               label="Device ID"
@@ -145,7 +145,7 @@ export const WebSocketTestPanel: React.FC<WebSocketTestPanelProps> = ({ onClose 
         </Typography>
         
         <Grid container spacing={2}>
-          <Grid item xs={6}>
+          <Grid size={{ xs: 6 }}>
             <TextField
               fullWidth
               label="Latitude"
@@ -153,7 +153,7 @@ export const WebSocketTestPanel: React.FC<WebSocketTestPanelProps> = ({ onClose 
               onChange={(e) => setLatitude(e.target.value)}
             />
           </Grid>
-          <Grid item xs={6}>
+          <Grid size={{ xs: 6 }}>
             <TextField
               fullWidth
               label="Longitude"
@@ -161,7 +161,7 @@ export const WebSocketTestPanel: React.FC<WebSocketTestPanelProps> = ({ onClose 
               onChange={(e) => setLongitude(e.target.value)}
             />
           </Grid>
-          <Grid item xs={6}>
+          <Grid size={{ xs: 6 }}>
             <TextField
               fullWidth
               label="Speed (km/h)"
@@ -170,7 +170,7 @@ export const WebSocketTestPanel: React.FC<WebSocketTestPanelProps> = ({ onClose 
               onChange={(e) => setSpeed(e.target.value)}
             />
           </Grid>
-          <Grid item xs={6}>
+          <Grid size={{ xs: 6 }}>
             <TextField
               fullWidth
               label="Course (degrees)"
@@ -199,7 +199,7 @@ export const WebSocketTestPanel: React.FC<WebSocketTestPanelProps> = ({ onClose 
         </Typography>
         
         <Grid container spacing={2}>
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <FormControl fullWidth>
               <InputLabel>Event Type</InputLabel>
               <Select
@@ -239,7 +239,7 @@ export const WebSocketTestPanel: React.FC<WebSocketTestPanelProps> = ({ onClose 
         </Typography>
         
         <Grid container spacing={2}>
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <FormControl fullWidth>
               <InputLabel>New Status</InputLabel>
               <Select

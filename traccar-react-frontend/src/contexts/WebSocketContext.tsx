@@ -79,17 +79,16 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
           // Handle different message types
           switch (message.type) {
             case 'position':
-              console.log('Position update received:', message.data);
-              // You can dispatch to Redux store here if needed
+              // Position update received
               break;
             case 'event':
-              console.log('Event received:', message.data);
+              // Event received
               break;
             case 'device_status':
-              console.log('Device status update:', message.data);
+              // Device status update
               break;
             case 'heartbeat':
-              console.log('Heartbeat received');
+              // Heartbeat received
               break;
             case 'error':
               console.error('WebSocket error:', message.data);
