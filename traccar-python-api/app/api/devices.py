@@ -9,6 +9,7 @@ from typing import List
 from app.database import get_db
 from app.models.user import User
 from app.models.device import Device
+from app.models.group import Group
 from app.schemas.device import DeviceCreate, DeviceUpdate, DeviceResponse
 from app.api.auth import get_current_user
 from app.services.websocket_service import websocket_service
@@ -21,9 +22,33 @@ async def get_devices(
     current_user: User = Depends(get_current_user)
 ):
     """Get all devices for the current user"""
-    result = await db.execute(select(Device))
-    devices = result.scalars().all()
-    return [DeviceResponse.from_orm(device) for device in devices]
+    result = await db.execute(
+        select(Device, Group.name.label('group_name'))
+        .outerjoin(Group, Device.group_id == Group.id)
+    )
+    devices_with_groups = result.all()
+    
+    devices = []
+    for device, group_name in devices_with_groups:
+        device_dict = {
+            "id": device.id,
+            "name": device.name,
+            "unique_id": device.unique_id,
+            "phone": device.phone,
+            "model": device.model,
+            "contact": device.contact,
+            "category": device.category,
+            "disabled": device.disabled,
+            "group_id": device.group_id,
+            "status": device.status,
+            "protocol": device.protocol,
+            "last_update": device.last_update,
+            "created_at": device.created_at,
+            "group_name": group_name
+        }
+        devices.append(DeviceResponse(**device_dict))
+    
+    return devices
 
 @router.post("/", response_model=DeviceResponse)
 async def create_device(

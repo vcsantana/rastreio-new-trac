@@ -18,6 +18,7 @@ import { ErrorBoundary } from './components/common/ErrorBoundary';
 // Lazy load pages for better performance
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const Devices = React.lazy(() => import('./pages/Devices'));
+const Groups = React.lazy(() => import('./pages/Groups'));
 const Reports = React.lazy(() => import('./pages/Reports'));
 const Settings = React.lazy(() => import('./pages/Settings'));
 const Login = React.lazy(() => import('./pages/Login'));
@@ -51,6 +52,7 @@ function App() {
                         <Route index element={<Navigate to="/dashboard" replace />} />
                         <Route path="dashboard" element={<Dashboard />} />
                         <Route path="devices" element={<Devices />} />
+                        <Route path="groups" element={<Groups />} />
                         <Route path="reports" element={<Reports />} />
                         <Route path="settings" element={<Settings />} />
                       </Route>

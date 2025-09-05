@@ -24,6 +24,7 @@ import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
   DeviceHub as DevicesIcon,
+  Group as GroupsIcon,
   Assessment as ReportsIcon,
   Settings as SettingsIcon,
   Notifications as NotificationsIcon,
@@ -62,6 +63,12 @@ const navigationItems: NavigationItem[] = [
     label: 'Devices',
     path: '/devices',
     icon: <DevicesIcon />,
+  },
+  {
+    id: 'groups',
+    label: 'Groups',
+    path: '/groups',
+    icon: <GroupsIcon />,
   },
   {
     id: 'reports',

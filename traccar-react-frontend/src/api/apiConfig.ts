@@ -15,6 +15,9 @@ export const API_ENDPOINTS = {
   DEVICES: `${API_BASE_URL}/api/devices`,
   DEVICE_POSITIONS: (deviceId: number) => `${API_BASE_URL}/api/devices/${deviceId}/positions`,
   
+  // Groups
+  GROUPS: `${API_BASE_URL}/api/groups`,
+  
   // Positions
   POSITIONS: `${API_BASE_URL}/api/positions`,
   

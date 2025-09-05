@@ -11,9 +11,9 @@ import uvicorn
 
 from app.config import settings
 from app.database import init_db
-from app.api import auth, devices, positions, websocket, events, geofences, server, protocols, reports
+from app.api import auth, devices, positions, websocket, events, geofences, server, protocols, reports, groups
 # Import models to ensure they are registered with SQLAlchemy
-from app.models import user, device, position, event, geofence, report
+from app.models import user, device, position, event, geofence, report, group
 from app.models import server as server_model
 # Import protocol server manager
 from app.protocols import start_protocol_servers, stop_protocol_servers
@@ -128,6 +128,7 @@ async def health_check():
 # Include API routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(devices.router, prefix="/api/devices", tags=["Devices"])
+app.include_router(groups.router, prefix="/api/groups", tags=["Groups"])
 app.include_router(positions.router, prefix="/api/positions", tags=["Positions"])
 app.include_router(events.router, prefix="/api", tags=["Events"])
 app.include_router(geofences.router, prefix="/api", tags=["Geofences"])

@@ -26,6 +26,9 @@ class Device(Base):
     category = Column(String(50))
     disabled = Column(Boolean, default=False)
     
+    # Group relationship
+    group_id = Column(Integer, ForeignKey("groups.id"))
+    
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -37,3 +40,4 @@ class Device(Base):
     positions = relationship("Position", back_populates="device", cascade="all, delete-orphan", foreign_keys="Position.device_id")
     events = relationship("Event", back_populates="device", cascade="all, delete-orphan")
     last_position = relationship("Position", foreign_keys=[position_id], post_update=True)
+    group = relationship("Group", back_populates="devices")

@@ -6,5 +6,6 @@ from .event import Event
 from .geofence import Geofence
 from .server import Server
 from .report import Report, ReportTemplate
+from .group import Group
 
-__all__ = ["User", "Device", "Position", "Event", "Geofence", "Server", "Report", "ReportTemplate"]
+__all__ = ["User", "Device", "Position", "Event", "Geofence", "Server", "Report", "ReportTemplate", "Group"]
