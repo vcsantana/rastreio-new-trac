@@ -16,6 +16,7 @@ import {
   Alert,
 } from '@mui/material';
 import { Device, CreateDeviceData, UpdateDeviceData } from '../../hooks/useDevices';
+import { useGroups } from '../../hooks/useGroups';
 
 interface DeviceDialogProps {
   open: boolean;
@@ -53,6 +54,7 @@ const DeviceDialog: React.FC<DeviceDialogProps> = ({
   device,
   title,
 }) => {
+  const { groups } = useGroups();
   const [formData, setFormData] = useState<CreateDeviceData>({
     name: '',
     unique_id: '',
@@ -61,6 +63,7 @@ const DeviceDialog: React.FC<DeviceDialogProps> = ({
     contact: '',
     category: 'car',
     phone: '',
+    group_id: undefined,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +80,7 @@ const DeviceDialog: React.FC<DeviceDialogProps> = ({
           contact: device.contact || '',
           category: device.category || 'car',
           phone: device.phone || '',
+          group_id: device.group_id || undefined,
         });
       } else {
         setFormData({
@@ -87,6 +91,7 @@ const DeviceDialog: React.FC<DeviceDialogProps> = ({
           contact: '',
           category: 'car',
           phone: '',
+          group_id: undefined,
         });
       }
       setError(null);
@@ -231,6 +236,26 @@ const DeviceDialog: React.FC<DeviceDialogProps> = ({
                 disabled={loading}
                 helperText="Phone number (optional)"
               />
+            </Grid>
+            
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth disabled={loading}>
+                <InputLabel>Group</InputLabel>
+                <Select
+                  value={formData.group_id || ''}
+                  label="Group"
+                  onChange={handleInputChange('group_id')}
+                >
+                  <MenuItem value="">
+                    <em>No Group</em>
+                  </MenuItem>
+                  {groups.map((group) => (
+                    <MenuItem key={group.id} value={group.id}>
+                      {group.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
           </Grid>
         </Box>

@@ -186,6 +186,7 @@ const Devices: React.FC = () => {
               <TableCell>Status</TableCell>
               <TableCell>Protocol</TableCell>
               <TableCell>Category</TableCell>
+              <TableCell>Group</TableCell>
               <TableCell>Last Update</TableCell>
               <TableCell align="right">Actions</TableCell>
             </TableRow>
@@ -233,6 +234,20 @@ const Devices: React.FC = () => {
                       size="small"
                       color="info"
                     />
+                  )}
+                </TableCell>
+                <TableCell>
+                  {device.group_name ? (
+                    <Chip
+                      label={device.group_name}
+                      variant="outlined"
+                      size="small"
+                      color="secondary"
+                    />
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No Group
+                    </Typography>
                   )}
                 </TableCell>
                 <TableCell>{device.last_update || 'Never'}</TableCell>

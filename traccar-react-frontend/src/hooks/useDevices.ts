@@ -13,6 +13,8 @@ export interface Device {
   category?: string;
   disabled?: boolean;
   phone?: string;
+  group_id?: number;
+  group_name?: string;
   created_at?: string;
 }
 
@@ -24,6 +26,7 @@ export interface CreateDeviceData {
   contact?: string;
   category?: string;
   phone?: string;
+  group_id?: number;
 }
 
 export interface UpdateDeviceData {
@@ -35,6 +38,7 @@ export interface UpdateDeviceData {
   category?: string;
   phone?: string;
   disabled?: boolean;
+  group_id?: number;
 }
 
 export const useDevices = () => {
