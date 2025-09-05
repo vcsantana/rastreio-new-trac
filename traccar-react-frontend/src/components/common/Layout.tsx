@@ -35,6 +35,7 @@ import {
   Brightness7 as LightModeIcon,
   ListAlt as LogsIcon,
   NetworkCheck as UnknownDevicesIcon,
+  People as UsersIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -96,6 +97,12 @@ const navigationItems: NavigationItem[] = [
     label: 'Unknown Devices',
     path: '/unknown-devices',
     icon: <UnknownDevicesIcon />,
+  },
+  {
+    id: 'users',
+    label: 'Users',
+    path: '/users',
+    icon: <UsersIcon />,
   },
   {
     id: 'settings',

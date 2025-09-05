@@ -28,6 +28,9 @@ export const API_ENDPOINTS = {
   // Unknown Devices
   UNKNOWN_DEVICES: `${API_BASE_URL}/api/unknown-devices`,
   
+  // Users
+  USERS: `${API_BASE_URL}/api/users`,
+  
   // WebSocket
   WEBSOCKET: WS_URL,
   

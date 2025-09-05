@@ -24,6 +24,7 @@ const Reports = React.lazy(() => import('./pages/Reports'));
 const Settings = React.lazy(() => import('./pages/Settings'));
 const LogsViewer = React.lazy(() => import('./components/LogsViewer'));
 const UnknownDevices = React.lazy(() => import('./pages/UnknownDevices'));
+const Users = React.lazy(() => import('./pages/Users'));
 const Login = React.lazy(() => import('./pages/Login'));
 
 function App() {
@@ -60,6 +61,7 @@ function App() {
                         <Route path="reports" element={<Reports />} />
                         <Route path="logs" element={<LogsViewer />} />
                         <Route path="unknown-devices" element={<UnknownDevices />} />
+                        <Route path="users" element={<Users />} />
                         <Route path="settings" element={<Settings />} />
                       </Route>
                       

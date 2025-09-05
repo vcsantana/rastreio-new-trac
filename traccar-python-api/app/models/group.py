@@ -24,3 +24,8 @@ class Group(Base):
     # Relationships
     devices = relationship("Device", back_populates="group")
     person = relationship("Person", back_populates="groups")
+    user_permissions = relationship(
+        "User", 
+        secondary="user_group_permissions", 
+        back_populates="group_permissions"
+    )
