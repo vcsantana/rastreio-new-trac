@@ -44,6 +44,9 @@ export const useUnknownDevices = () => {
   const { isAuthenticated, token } = useAuth();
 
   const fetchUnknownDevices = useCallback(async (filters: UnknownDeviceFilters = {}) => {
+    console.log('fetchUnknownDevices called with filters:', filters);
+    console.log('isAuthenticated:', isAuthenticated, 'token:', token ? 'present' : 'missing');
+    
     if (!isAuthenticated || !token) {
       setUnknownDevices([]);
       setError('Authentication required to fetch unknown devices.');
@@ -63,6 +66,7 @@ export const useUnknownDevices = () => {
       if (filters.limit) params.append('limit', filters.limit.toString());
 
       const url = `${API_ENDPOINTS.UNKNOWN_DEVICES}${params.toString() ? `?${params.toString()}` : ''}`;
+      console.log('Fetching URL:', url);
       
       const response = await fetch(url, {
         headers: {
@@ -71,15 +75,18 @@ export const useUnknownDevices = () => {
         },
       });
 
+      console.log('Response status:', response.status);
+
       if (!response.ok) {
         throw new Error(`Failed to fetch unknown devices: ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('Received unknown devices data:', data);
       setUnknownDevices(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch unknown devices');
       console.error('Error fetching unknown devices:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch unknown devices');
     } finally {
       setLoading(false);
     }

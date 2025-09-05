@@ -57,6 +57,12 @@ const UnknownDevices: React.FC = () => {
     registerUnknownDevice,
   } = useUnknownDevices();
 
+  // Debug logs
+  console.log('UnknownDevices component rendered');
+  console.log('unknownDevices:', unknownDevices);
+  console.log('loading:', loading);
+  console.log('error:', error);
+
   const { devices } = useDevices();
 
   // Filter states
