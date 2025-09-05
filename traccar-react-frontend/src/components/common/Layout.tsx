@@ -34,6 +34,7 @@ import {
   Brightness4 as DarkModeIcon,
   Brightness7 as LightModeIcon,
   ListAlt as LogsIcon,
+  NetworkCheck as UnknownDevicesIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -89,6 +90,12 @@ const navigationItems: NavigationItem[] = [
     label: 'Logs',
     path: '/logs',
     icon: <LogsIcon />,
+  },
+  {
+    id: 'unknown-devices',
+    label: 'Unknown Devices',
+    path: '/unknown-devices',
+    icon: <UnknownDevicesIcon />,
   },
   {
     id: 'settings',

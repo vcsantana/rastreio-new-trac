@@ -13,7 +13,7 @@ import structlog
 from app.protocols.base import BaseProtocolHandler, ProtocolMessage
 from sqlalchemy import select
 from app.database import get_db, AsyncSessionLocal
-from app.models import Device, Position, Event
+from app.models import Device, Position, Event, UnknownDevice
 from app.schemas.position import PositionCreate
 from app.services.websocket_service import websocket_service
 
@@ -207,6 +207,8 @@ class HTTPProtocolServer:
             device = result.scalar_one_or_none()
             if not device:
                 logger.warning("Device not found", device_id=device_id)
+                # Track unknown device
+                await self._track_unknown_device(db, device_id, client_address)
                 return
             
             # Create position
@@ -317,3 +319,39 @@ class HTTPProtocolServer:
     def is_running(self) -> bool:
         """Check if server is running"""
         return self.running
+    
+    async def _track_unknown_device(self, db: AsyncSessionLocal, device_id: str, client_address: Tuple[str, int]):
+        """Track unknown device connection"""
+        try:
+            # Check if this unknown device already exists
+            result = await db.execute(
+                select(UnknownDevice).where(
+                    UnknownDevice.unique_id == device_id,
+                    UnknownDevice.protocol == self.protocol_handler.PROTOCOL_NAME,
+                    UnknownDevice.port == self.port
+                )
+            )
+            existing = result.scalar_one_or_none()
+            
+            if existing:
+                # Update existing record
+                existing.last_seen = datetime.utcnow()
+                existing.connection_count += 1
+                existing.client_address = f"{client_address[0]}:{client_address[1]}"
+            else:
+                # Create new unknown device record
+                unknown_device = UnknownDevice(
+                    unique_id=device_id,
+                    protocol=self.protocol_handler.PROTOCOL_NAME,
+                    port=self.port,
+                    protocol_type="http",
+                    client_address=f"{client_address[0]}:{client_address[1]}",
+                    connection_count=1
+                )
+                db.add(unknown_device)
+            
+            await db.commit()
+            logger.info("Unknown device tracked", device_id=device_id, protocol=self.protocol_handler.PROTOCOL_NAME)
+            
+        except Exception as e:
+            logger.error("Failed to track unknown device", error=str(e), device_id=device_id)

@@ -23,6 +23,10 @@ export const API_ENDPOINTS = {
   
   // Positions
   POSITIONS: `${API_BASE_URL}/api/positions`,
+  POSITIONS_LATEST: `${API_BASE_URL}/api/positions/latest`,
+  
+  // Unknown Devices
+  UNKNOWN_DEVICES: `${API_BASE_URL}/api/unknown-devices`,
   
   // WebSocket
   WEBSOCKET: WS_URL,

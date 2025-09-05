@@ -8,5 +8,6 @@ from .server import Server
 from .report import Report, ReportTemplate
 from .group import Group
 from .person import Person, PersonType
+from .unknown_device import UnknownDevice
 
-__all__ = ["User", "Device", "Position", "Event", "Geofence", "Server", "Report", "ReportTemplate", "Group", "Person", "PersonType"]
+__all__ = ["User", "Device", "Position", "Event", "Geofence", "Server", "Report", "ReportTemplate", "Group", "Person", "PersonType", "UnknownDevice"]
