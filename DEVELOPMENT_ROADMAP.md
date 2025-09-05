@@ -142,7 +142,31 @@ This document outlines the complete migration strategy from the existing Java-ba
 - [ ] Queclink protocol
 - [ ] Generic NMEA protocol support
 
-### Phase 5: Additional Protocols & Testing (Weeks 13-14)
+### Phase 5: Persons Management System (Weeks 13-14) ✅ **COMPLETED**
+#### Person Entity Management
+- [x] Person model with physical/legal entity support ✅
+- [x] PersonType enum (physical/legal) ✅
+- [x] Physical person fields (CPF, birth date) ✅
+- [x] Legal person fields (CNPJ, company name, trade name) ✅
+- [x] Document validation (unique CPF/CNPJ) ✅
+- [x] Person API endpoints (CRUD operations) ✅
+- [x] Person schemas (Create, Update, Response) ✅
+
+#### Frontend Integration
+- [x] PersonDialog component with dynamic form ✅
+- [x] Persons page with complete CRUD interface ✅
+- [x] usePersons hook for API integration ✅
+- [x] Person selection in GroupDialog ✅
+- [x] Person column in Groups table ✅
+- [x] Navigation menu item for Persons ✅
+
+#### Database Integration
+- [x] Person table creation ✅
+- [x] Group-Person relationship (person_id) ✅
+- [x] Database schema migration ✅
+- [x] Foreign key constraints ✅
+
+### Phase 6: Additional Protocols & Testing (Weeks 15-16)
 - [ ] Unit tests for all API endpoints
 - [ ] Integration tests for protocol handlers
 - [ ] Frontend component testing
@@ -150,7 +174,7 @@ This document outlines the complete migration strategy from the existing Java-ba
 - [ ] Security audit
 - [ ] Load testing
 
-### Phase 6: Deployment & Documentation (Weeks 15-16)
+### Phase 7: Deployment & Documentation (Weeks 17-18)
 - [ ] Production deployment configuration
 - [ ] CI/CD pipeline setup
 - [ ] API documentation completion
