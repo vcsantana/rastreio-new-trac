@@ -91,90 +91,92 @@ const DeviceInfoCard: React.FC<DeviceInfoCardProps> = ({
   return (
     <Card
       sx={{
-        position: 'absolute',
+        position: 'fixed',
         top: 16,
         right: 16,
         width: 320,
         maxWidth: '90vw',
-        zIndex: 9999,
+        zIndex: 99999,
         maxHeight: '80vh',
         overflow: 'auto',
-        backgroundColor: 'rgba(255, 255, 255, 0.98)',
-        backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
-        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.3)'
+        backgroundColor: 'rgba(33, 33, 33, 0.95)',
+        backdropFilter: 'blur(15px)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        boxShadow: '0 16px 48px rgba(0, 0, 0, 0.5)',
+        color: 'white'
       }}
-      elevation={8}
+      elevation={12}
     >
       <CardContent>
         {/* Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
           <Box>
-            <Typography variant="h6" component="div" gutterBottom>
+            <Typography variant="h6" component="div" gutterBottom sx={{ color: 'white' }}>
               {device.name}
             </Typography>
             <Chip 
               label={device.status} 
               color={getStatusColor(device.status) as any}
               size="small"
+              sx={{ color: 'white' }}
             />
           </Box>
-          <IconButton onClick={onClose} size="small">
+          <IconButton onClick={onClose} size="small" sx={{ color: 'white' }}>
             <Close />
           </IconButton>
         </Box>
 
-        <Divider sx={{ mb: 2 }} />
+        <Divider sx={{ mb: 2, borderColor: 'rgba(255, 255, 255, 0.2)' }} />
 
         {/* Position Info */}
         {position && (
           <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" gutterBottom>
+            <Typography variant="subtitle2" gutterBottom sx={{ color: 'white' }}>
               Current Position
             </Typography>
             
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <SpeedIcon sx={{ mr: 1, fontSize: 18 }} />
-              <Typography variant="body2">
+              <SpeedIcon sx={{ mr: 1, fontSize: 18, color: 'white' }} />
+              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
                 Speed: {formatSpeed(position.speed)}
               </Typography>
             </Box>
 
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <NavigationIcon sx={{ mr: 1, fontSize: 18 }} />
-              <Typography variant="body2">
+              <NavigationIcon sx={{ mr: 1, fontSize: 18, color: 'white' }} />
+              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
                 Direction: {formatCourse(position.course)}
               </Typography>
             </Box>
 
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <AccessTimeIcon sx={{ mr: 1, fontSize: 18 }} />
-              <Typography variant="body2">
+              <AccessTimeIcon sx={{ mr: 1, fontSize: 18, color: 'white' }} />
+              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
                 Last Update: {formatLastUpdate(position.fixTime)}
               </Typography>
             </Box>
           </Box>
         )}
 
-        <Divider sx={{ mb: 2 }} />
+        <Divider sx={{ mb: 2, borderColor: 'rgba(255, 255, 255, 0.2)' }} />
 
         {/* Device Details */}
         <Box sx={{ mb: 2 }}>
-          <Typography variant="subtitle2" gutterBottom>
+          <Typography variant="subtitle2" gutterBottom sx={{ color: 'white' }}>
             Device Details
           </Typography>
           
-          <Typography variant="body2" sx={{ mb: 1 }}>
+          <Typography variant="body2" sx={{ mb: 1, color: 'rgba(255, 255, 255, 0.9)' }}>
             <strong>ID:</strong> {device.id}
           </Typography>
           
           {device.category && (
-            <Typography variant="body2" sx={{ mb: 1 }}>
+            <Typography variant="body2" sx={{ mb: 1, color: 'rgba(255, 255, 255, 0.9)' }}>
               <strong>Category:</strong> {device.category}
             </Typography>
           )}
 
-          <Typography variant="body2" sx={{ mb: 1 }}>
+          <Typography variant="body2" sx={{ mb: 1, color: 'rgba(255, 255, 255, 0.9)' }}>
             <strong>Coordinates:</strong> {position ? `${position.latitude.toFixed(6)}, ${position.longitude.toFixed(6)}` : 'N/A'}
           </Typography>
         </Box>
@@ -182,16 +184,16 @@ const DeviceInfoCard: React.FC<DeviceInfoCardProps> = ({
         {/* Additional Attributes */}
         {position?.attributes && Object.keys(position.attributes).length > 0 && (
           <>
-            <Divider sx={{ mb: 2 }} />
+            <Divider sx={{ mb: 2, borderColor: 'rgba(255, 255, 255, 0.2)' }} />
             <Box>
-              <Typography variant="subtitle2" gutterBottom>
+              <Typography variant="subtitle2" gutterBottom sx={{ color: 'white' }}>
                 Additional Info
               </Typography>
               
               {getBatteryLevel() && (
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <BatteryFull sx={{ mr: 1, fontSize: 18 }} />
-                  <Typography variant="body2">
+                  <BatteryFull sx={{ mr: 1, fontSize: 18, color: 'white' }} />
+                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
                     Battery: {getBatteryLevel()}%
                   </Typography>
                 </Box>
@@ -199,8 +201,8 @@ const DeviceInfoCard: React.FC<DeviceInfoCardProps> = ({
 
               {getSignalStrength() && (
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <SignalIcon sx={{ mr: 1, fontSize: 18 }} />
-                  <Typography variant="body2">
+                  <SignalIcon sx={{ mr: 1, fontSize: 18, color: 'white' }} />
+                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
                     Signal: {getSignalStrength()} dBm
                   </Typography>
                 </Box>
@@ -211,7 +213,7 @@ const DeviceInfoCard: React.FC<DeviceInfoCardProps> = ({
                 .filter(([key]) => !['battery', 'batteryLevel', 'rssi', 'signal'].includes(key))
                 .slice(0, 5) // Limit to 5 additional attributes
                 .map(([key, value]) => (
-                  <Typography key={key} variant="body2" sx={{ mb: 0.5 }}>
+                  <Typography key={key} variant="body2" sx={{ mb: 0.5, color: 'rgba(255, 255, 255, 0.9)' }}>
                     <strong>{key}:</strong> {String(value)}
                   </Typography>
                 ))}
