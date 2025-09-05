@@ -44,6 +44,9 @@ import {
   Visibility as ViewIcon,
 } from '@mui/icons-material';
 import { useUsers, User, UserStats, UserCreate, UserUpdate, UserPermission } from '../hooks/useUsers';
+import { useDevices, Device } from '../hooks/useDevices';
+import { useGroups, Group } from '../hooks/useGroups';
+import { usePersons, Person } from '../hooks/usePersons';
 import { useAuth } from '../contexts/AuthContext';
 
 const Users: React.FC = () => {
@@ -60,6 +63,10 @@ const Users: React.FC = () => {
     fetchUserPermissions,
     updateUserPermissions,
   } = useUsers();
+  
+  const { devices, fetchDevices } = useDevices();
+  const { groups, fetchGroups } = useGroups();
+  const { persons, fetchPersons } = usePersons();
 
   const [stats, setStats] = useState<UserStats | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -73,6 +80,12 @@ const Users: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'user'>('all');
   const [actionLoading, setActionLoading] = useState(false);
+  
+  // Permission states
+  const [selectedDeviceIds, setSelectedDeviceIds] = useState<number[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
+  const [selectedManagedUserIds, setSelectedManagedUserIds] = useState<number[]>([]);
+  const [permissionsLoading, setPermissionsLoading] = useState(false);
 
   // Form states
   const [formData, setFormData] = useState<UserCreate>({
@@ -93,6 +106,9 @@ const Users: React.FC = () => {
     await Promise.all([
       fetchUsers(),
       loadStats(),
+      fetchDevices(),
+      fetchGroups(),
+      fetchPersons(),
     ]);
   };
 
@@ -167,9 +183,47 @@ const Users: React.FC = () => {
 
   const handleViewPermissions = async (user: User) => {
     setSelectedUser(user);
-    const permissions = await fetchUserPermissions(user.id);
-    setUserPermissions(permissions);
-    setPermissionsDialogOpen(true);
+    setPermissionsLoading(true);
+    
+    try {
+      const permissions = await fetchUserPermissions(user.id);
+      setUserPermissions(permissions);
+      
+      // Set current selections
+      if (permissions) {
+        setSelectedDeviceIds(permissions.device_permissions.map(d => d.id));
+        setSelectedGroupIds(permissions.group_permissions.map(g => g.id));
+        setSelectedManagedUserIds(permissions.managed_users.map(u => u.id));
+      }
+      
+      setPermissionsDialogOpen(true);
+    } finally {
+      setPermissionsLoading(false);
+    }
+  };
+
+  const handleSavePermissions = async () => {
+    if (!selectedUser) return;
+    
+    setPermissionsLoading(true);
+    setError(null);
+    
+    try {
+      const success = await updateUserPermissions(selectedUser.id, {
+        device_ids: selectedDeviceIds,
+        group_ids: selectedGroupIds,
+        managed_user_ids: selectedManagedUserIds,
+      });
+      
+      if (success) {
+        setPermissionsDialogOpen(false);
+        // Refresh permissions
+        const updatedPermissions = await fetchUserPermissions(selectedUser.id);
+        setUserPermissions(updatedPermissions);
+      }
+    } finally {
+      setPermissionsLoading(false);
+    }
   };
 
   const handleMenuClick = (event: React.MouseEvent<HTMLElement>, user: User) => {
@@ -664,72 +718,196 @@ const Users: React.FC = () => {
       </Dialog>
 
       {/* Permissions Dialog */}
-      <Dialog open={permissionsDialogOpen} onClose={() => setPermissionsDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>User Permissions</DialogTitle>
+      <Dialog open={permissionsDialogOpen} onClose={() => setPermissionsDialogOpen(false)} maxWidth="lg" fullWidth>
+        <DialogTitle>User Permissions - {selectedUser?.name}</DialogTitle>
         <DialogContent>
-          {userPermissions && (
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12}>
+          {permissionsLoading ? (
+            <Box display="flex" justifyContent="center" p={3}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Grid container spacing={3} sx={{ mt: 1 }}>
+              {/* Device Permissions */}
+              <Grid item xs={12} md={4}>
                 <Typography variant="h6" gutterBottom>
-                  Device Permissions ({userPermissions.device_permissions.length})
+                  Device Permissions
                 </Typography>
-                {userPermissions.device_permissions.length > 0 ? (
-                  <Box>
-                    {userPermissions.device_permissions.map((device) => (
-                      <Chip
-                        key={device.id}
-                        label={`${device.name} (${device.unique_id})`}
-                        sx={{ m: 0.5 }}
-                      />
+                <FormControl fullWidth>
+                  <InputLabel>Select Devices</InputLabel>
+                  <Select
+                    multiple
+                    value={selectedDeviceIds}
+                    onChange={(e) => setSelectedDeviceIds(e.target.value as number[])}
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => {
+                          const device = devices.find(d => d.id === value);
+                          return (
+                            <Chip key={value} label={device?.name || `Device ${value}`} size="small" />
+                          );
+                        })}
+                      </Box>
+                    )}
+                  >
+                    {devices.map((device) => (
+                      <MenuItem key={device.id} value={device.id}>
+                        <Box>
+                          <Typography variant="body2">{device.name}</Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {device.unique_id} - {device.model || 'No model'}
+                          </Typography>
+                        </Box>
+                      </MenuItem>
                     ))}
-                  </Box>
-                ) : (
-                  <Typography color="textSecondary">No device permissions</Typography>
-                )}
+                  </Select>
+                </FormControl>
               </Grid>
-              
-              <Grid item xs={12}>
+
+              {/* Group Permissions */}
+              <Grid item xs={12} md={4}>
                 <Typography variant="h6" gutterBottom>
-                  Group Permissions ({userPermissions.group_permissions.length})
+                  Group Permissions
                 </Typography>
-                {userPermissions.group_permissions.length > 0 ? (
-                  <Box>
-                    {userPermissions.group_permissions.map((group) => (
-                      <Chip
-                        key={group.id}
-                        label={group.name}
-                        sx={{ m: 0.5 }}
-                      />
+                <FormControl fullWidth>
+                  <InputLabel>Select Groups</InputLabel>
+                  <Select
+                    multiple
+                    value={selectedGroupIds}
+                    onChange={(e) => setSelectedGroupIds(e.target.value as number[])}
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => {
+                          const group = groups.find(g => g.id === value);
+                          return (
+                            <Chip key={value} label={group?.name || `Group ${value}`} size="small" />
+                          );
+                        })}
+                      </Box>
+                    )}
+                  >
+                    {groups.map((group) => (
+                      <MenuItem key={group.id} value={group.id}>
+                        <Box>
+                          <Typography variant="body2">{group.name}</Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {group.description || 'No description'} - {group.device_count || 0} devices
+                          </Typography>
+                        </Box>
+                      </MenuItem>
                     ))}
-                  </Box>
-                ) : (
-                  <Typography color="textSecondary">No group permissions</Typography>
-                )}
+                  </Select>
+                </FormControl>
               </Grid>
-              
-              <Grid item xs={12}>
+
+              {/* Managed Users */}
+              <Grid item xs={12} md={4}>
                 <Typography variant="h6" gutterBottom>
-                  Managed Users ({userPermissions.managed_users.length})
+                  Managed Users
                 </Typography>
-                {userPermissions.managed_users.length > 0 ? (
-                  <Box>
-                    {userPermissions.managed_users.map((managed) => (
-                      <Chip
-                        key={managed.id}
-                        label={`${managed.name} (${managed.email})`}
-                        sx={{ m: 0.5 }}
-                      />
+                <FormControl fullWidth>
+                  <InputLabel>Select Managed Users</InputLabel>
+                  <Select
+                    multiple
+                    value={selectedManagedUserIds}
+                    onChange={(e) => setSelectedManagedUserIds(e.target.value as number[])}
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => {
+                          const user = users.find(u => u.id === value);
+                          return (
+                            <Chip key={value} label={user?.name || `User ${value}`} size="small" />
+                          );
+                        })}
+                      </Box>
+                    )}
+                  >
+                    {users.filter(u => u.id !== selectedUser?.id).map((user) => (
+                      <MenuItem key={user.id} value={user.id}>
+                        <Box>
+                          <Typography variant="body2">{user.name}</Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {user.email} - {user.is_admin ? 'Admin' : 'User'}
+                          </Typography>
+                        </Box>
+                      </MenuItem>
                     ))}
-                  </Box>
-                ) : (
-                  <Typography color="textSecondary">No managed users</Typography>
-                )}
+                  </Select>
+                </FormControl>
               </Grid>
+
+              {/* Current Permissions Summary */}
+              {userPermissions && (
+                <Grid item xs={12}>
+                  <Typography variant="h6" gutterBottom>
+                    Current Permissions Summary
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={4}>
+                      <Card variant="outlined">
+                        <CardContent>
+                          <Typography variant="subtitle2" color="primary">
+                            Device Permissions
+                          </Typography>
+                          <Typography variant="h4">{selectedDeviceIds.length}</Typography>
+                          <Typography variant="caption">
+                            {selectedDeviceIds.length > 0 
+                              ? `${selectedDeviceIds.length} device(s) selected`
+                              : 'No devices selected'
+                            }
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Card variant="outlined">
+                        <CardContent>
+                          <Typography variant="subtitle2" color="primary">
+                            Group Permissions
+                          </Typography>
+                          <Typography variant="h4">{selectedGroupIds.length}</Typography>
+                          <Typography variant="caption">
+                            {selectedGroupIds.length > 0 
+                              ? `${selectedGroupIds.length} group(s) selected`
+                              : 'No groups selected'
+                            }
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Card variant="outlined">
+                        <CardContent>
+                          <Typography variant="subtitle2" color="primary">
+                            Managed Users
+                          </Typography>
+                          <Typography variant="h4">{selectedManagedUserIds.length}</Typography>
+                          <Typography variant="caption">
+                            {selectedManagedUserIds.length > 0 
+                              ? `${selectedManagedUserIds.length} user(s) managed`
+                              : 'No users managed'
+                            }
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  </Grid>
+                </Grid>
+              )}
             </Grid>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPermissionsDialogOpen(false)}>Close</Button>
+          <Button onClick={() => setPermissionsDialogOpen(false)} disabled={permissionsLoading}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSavePermissions} 
+            variant="contained" 
+            disabled={permissionsLoading}
+            startIcon={permissionsLoading ? <CircularProgress size={20} /> : null}
+          >
+            {permissionsLoading ? 'Saving...' : 'Save Permissions'}
+          </Button>
         </DialogActions>
       </Dialog>
 
