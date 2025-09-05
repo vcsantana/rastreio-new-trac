@@ -12,7 +12,7 @@ export const API_ENDPOINTS = {
   REFRESH: `${API_BASE_URL}/api/auth/refresh`,
   
   // Devices
-  DEVICES: `${API_BASE_URL}/api/devices/`,
+  DEVICES: `${API_BASE_URL}/api/devices`,
   DEVICE_POSITIONS: (deviceId: number) => `${API_BASE_URL}/api/devices/${deviceId}/positions`,
   
   // Positions

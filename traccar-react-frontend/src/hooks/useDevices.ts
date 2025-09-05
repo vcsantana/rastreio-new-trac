@@ -106,20 +106,31 @@ export const useDevices = () => {
     setError(null);
     
     try {
-      const response = await fetch(`${API_ENDPOINTS.DEVICES}/${deviceId}`, {
+      const url = `${API_ENDPOINTS.DEVICES}/${deviceId}`;
+      const headers = {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      };
+      
+      console.log('Updating device:', { url, headers, deviceData });
+      
+      const response = await fetch(url, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
+        headers,
         body: JSON.stringify(deviceData),
       });
 
+      console.log('Update response:', { status: response.status, statusText: response.statusText });
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Update error response:', errorText);
         throw new Error(`Failed to update device: ${response.statusText}`);
       }
 
       const updatedDevice = await response.json();
+      console.log('Updated device:', updatedDevice);
+      
       setDevices(prev => prev.map(device => 
         device.id === deviceId ? updatedDevice : device
       ));
