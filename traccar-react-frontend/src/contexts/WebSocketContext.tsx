@@ -1,5 +1,5 @@
 import React, { createContext, useContext, ReactNode, useEffect, useState, useCallback } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from './AuthContext';
 
 interface WebSocketMessage {
   type: 'position' | 'event' | 'device_status' | 'heartbeat' | 'error' | 'info';
@@ -177,14 +177,22 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
   // Connect when user is available
   useEffect(() => {
-    if (user && token && !connected) {
-      connect();
+    if (user && token && !connected && !socket) {
+      console.log('Attempting WebSocket connection for user:', user.id);
+      // Add a small delay to ensure authentication is complete
+      const timer = setTimeout(() => {
+        connect();
+      }, 1000);
+      
+      return () => clearTimeout(timer);
     }
     
     return () => {
-      disconnect();
+      if (socket) {
+        disconnect();
+      }
     };
-  }, [user, token, connect, disconnect, connected]);
+  }, [user, token, connect, disconnect, connected, socket]);
 
   // Cleanup on unmount
   useEffect(() => {
