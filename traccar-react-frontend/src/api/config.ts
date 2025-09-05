@@ -12,8 +12,8 @@ export const API_ENDPOINTS = {
   REFRESH: `${API_BASE_URL}/api/auth/refresh`,
   
   // Devices
-  DEVICES: `${API_BASE_URL}/api/devices`,
-  DEVICE_POSITIONS: (deviceId) => `${API_BASE_URL}/api/devices/${deviceId}/positions`,
+  DEVICES: `${API_BASE_URL}/api/devices/`,
+  DEVICE_POSITIONS: (deviceId: number) => `${API_BASE_URL}/api/devices/${deviceId}/positions`,
   
   // Positions
   POSITIONS: `${API_BASE_URL}/api/positions`,
@@ -25,11 +25,11 @@ export const API_ENDPOINTS = {
   SESSION: `${API_BASE_URL}/api/session`,
 };
 
-export const getAuthHeaders = () => {
+export const getAuthHeaders = (): Record<string, string> => {
   const token = localStorage.getItem('access_token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-export const getApiUrl = (endpoint) => {
+export const getApiUrl = (endpoint: string): string => {
   return `${API_BASE_URL}${endpoint}`;
 };
