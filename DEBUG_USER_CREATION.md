@@ -98,3 +98,5 @@ Se algo não funcionar, copie e cole:
 5. **Copie todos os logs** que aparecerem
 
 Com essas informações, posso identificar exatamente onde está o problema!
+
+

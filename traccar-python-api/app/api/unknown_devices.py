@@ -255,3 +255,5 @@ async def register_unknown_device(
         "unknown_device_id": unknown_device_id,
         "device_id": device_id
     }
+
+

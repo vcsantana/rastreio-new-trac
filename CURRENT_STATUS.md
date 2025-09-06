@@ -239,7 +239,7 @@ npm run dev
 
 ### **Semana 1-2:**
 1. **API Server** - Endpoints para configurações do sistema
-2. ✅ **Servidor TCP** - **JÁ ATIVO** na porta 5001 para protocolo Suntech
+2. ✅ **Servidores TCP e UDP** - **JÁ ATIVOS** na porta 5001 para protocolo Suntech
 3. ✅ **Servidor HTTP** - **JÁ ATIVO** na porta 5055 para protocolo OsmAnd (Android/iOS)
 4. ✅ **WebSocket** - **JÁ ATIVO** com performance otimizada
 

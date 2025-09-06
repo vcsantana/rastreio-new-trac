@@ -279,3 +279,5 @@ docker-compose -f docker-compose.dev.yml up -d
 **Protocolo**: OsmAnd (Mobile Android/iOS)  
 **Porta**: 5055 (HTTP)  
 **Status**: ✅ Completo e Funcional
+
+

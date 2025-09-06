@@ -34,3 +34,5 @@ class UnknownDevice(Base):
     
     def __repr__(self):
         return f"<UnknownDevice(id={self.id}, unique_id={self.unique_id}, protocol={self.protocol}, port={self.port})>"
+
+

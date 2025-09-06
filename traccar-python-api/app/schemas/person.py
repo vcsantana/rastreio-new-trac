@@ -104,3 +104,4 @@ class PersonResponse(PersonBase):
 
     class Config:
         from_attributes = True
+

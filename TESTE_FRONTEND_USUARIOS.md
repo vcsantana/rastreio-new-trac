@@ -128,3 +128,5 @@ Se algo não funcionar, copie e cole:
 4. **Qualquer erro** que aparecer
 
 Com essas informações, posso corrigir o problema imediatamente!
+
+

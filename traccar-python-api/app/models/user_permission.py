@@ -25,3 +25,5 @@ user_managed_users = Table(
     Column('user_id', Integer, ForeignKey('users.id', ondelete='CASCADE'), primary_key=True),
     Column('managed_user_id', Integer, ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
 )
+
+

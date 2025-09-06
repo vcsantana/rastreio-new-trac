@@ -299,3 +299,4 @@ async def delete_person(
     await db.commit()
     
     return {"message": "Person deleted successfully"}
+

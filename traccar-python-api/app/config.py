@@ -41,7 +41,7 @@ class Settings(BaseSettings):
         "suntech": {
             "enabled": True,
             "port": 5001,
-            "protocol": "tcp"
+            "protocols": ["tcp", "udp"]  # Support both TCP and UDP
         },
         "gt06": {
             "enabled": True,

@@ -30,3 +30,5 @@ class LogsResponse(BaseModel):
     total: int
     limit: int
     filters: LogsFilter
+
+

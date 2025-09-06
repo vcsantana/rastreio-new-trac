@@ -24,12 +24,13 @@ class TraccarProtocolServer:
     Main protocol server that manages multiple protocol handlers.
     """
     
-    def __init__(self):
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
         self.protocol_handlers: Dict[str, BaseProtocolHandler] = {}
         self.protocol_servers: Dict[str, ProtocolServer] = {}
         self.http_servers: Dict[str, HTTPProtocolServer] = {}
         self.running = False
         self.tasks: List[asyncio.Task] = []
+        self.config = config or {}
         
         # Register available protocol handlers
         self._register_protocol_handlers()
@@ -67,7 +68,8 @@ class TraccarProtocolServer:
         else:
             # TCP/UDP protocols
             server = TraccarProtocolServerWrapper(handler, host, port, protocol_type)
-            self.protocol_servers[protocol_name] = server
+            server_key = f"{protocol_name}_{protocol_type}"
+            self.protocol_servers[server_key] = server
             
             if protocol_type.lower() == "tcp":
                 task = asyncio.create_task(server.start_tcp_server())
@@ -98,7 +100,20 @@ class TraccarProtocolServer:
         
         for protocol_name in self.protocol_handlers.keys():
             try:
-                await self.start_protocol_server(protocol_name, host)
+                # Check if protocol supports multiple transport protocols
+                protocol_config = self.config.get('PROTOCOL_SERVERS', {}).get(protocol_name, {})
+                
+                if 'protocols' in protocol_config:
+                    # Multiple protocols (e.g., ["tcp", "udp"])
+                    protocols = protocol_config['protocols']
+                    port = protocol_config.get('port', self._get_default_port(protocol_name))
+                    
+                    for protocol_type in protocols:
+                        await self.start_protocol_server(protocol_name, host, port, protocol_type)
+                else:
+                    # Single protocol (backward compatibility)
+                    await self.start_protocol_server(protocol_name, host)
+                    
             except Exception as e:
                 logger.error(f"Failed to start server for {protocol_name}: {e}")
         
@@ -264,21 +279,38 @@ class TraccarProtocolServerWrapper(ProtocolServer):
             self.logger.error(f"Error creating event: {e}")
 
 
-# Global protocol server instance
-protocol_server_manager = TraccarProtocolServer()
+# Global protocol server instance - will be initialized with config in start_protocol_servers
+protocol_server_manager = None
 
 
 async def start_protocol_servers():
     """Start all protocol servers."""
+    global protocol_server_manager
+    
+    if protocol_server_manager is None:
+        from app.config import settings
+        config = {
+            'PROTOCOL_SERVERS': settings.PROTOCOL_SERVERS
+        }
+        protocol_server_manager = TraccarProtocolServer(config)
+    
     await protocol_server_manager.start_all_servers()
 
 
 async def stop_protocol_servers():
     """Stop all protocol servers."""
-    await protocol_server_manager.stop_all_servers()
+    global protocol_server_manager
+    
+    if protocol_server_manager is not None:
+        await protocol_server_manager.stop_all_servers()
 
 
 def get_protocol_server_status() -> Dict[str, Dict[str, Any]]:
     """Get protocol server status."""
+    global protocol_server_manager
+    
+    if protocol_server_manager is None:
+        return {}
+    
     return protocol_server_manager.get_server_status()
 

@@ -46,3 +46,5 @@ class UnknownDeviceFilter(BaseModel):
     is_registered: Optional[bool] = None
     hours: int = 24  # Show devices seen in last N hours
     limit: int = 100
+
+

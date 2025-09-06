@@ -390,3 +390,5 @@ async def update_user_permissions(
     await db.commit()
     
     return {"message": "User permissions updated successfully"}
+
+
