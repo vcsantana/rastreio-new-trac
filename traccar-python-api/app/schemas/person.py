@@ -70,6 +70,24 @@ class PersonCreate(BaseModel):
     cnpj: Optional[str] = None
     company_name: Optional[str] = None
     trade_name: Optional[str] = None
+    
+    @validator('cpf', pre=True)
+    def validate_cpf(cls, v):
+        if v == "" or v is None:
+            return None
+        return v
+    
+    @validator('cnpj', pre=True)
+    def validate_cnpj(cls, v):
+        if v == "" or v is None:
+            return None
+        return v
+    
+    @validator('birth_date', pre=True)
+    def validate_birth_date(cls, v):
+        if v == "" or v is None:
+            return None
+        return v
 
 class PersonUpdate(BaseModel):
     name: Optional[str] = None
@@ -90,6 +108,24 @@ class PersonUpdate(BaseModel):
     cnpj: Optional[str] = None
     company_name: Optional[str] = None
     trade_name: Optional[str] = None
+    
+    @validator('cpf', pre=True)
+    def validate_cpf(cls, v):
+        if v == "" or v is None:
+            return None
+        return v
+    
+    @validator('cnpj', pre=True)
+    def validate_cnpj(cls, v):
+        if v == "" or v is None:
+            return None
+        return v
+    
+    @validator('birth_date', pre=True)
+    def validate_birth_date(cls, v):
+        if v == "" or v is None:
+            return None
+        return v
 
 class PersonResponse(PersonBase):
     id: int

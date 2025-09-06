@@ -130,17 +130,52 @@ const PersonDialog: React.FC<PersonDialogProps> = ({
     setError(null);
 
     try {
-      // Prepare data for submission
-      const submitData = { ...formData };
+      // Validate required fields
+      if (!formData.name.trim()) {
+        setError('Name is required');
+        return;
+      }
       
-      // Remove empty strings for optional fields
-      Object.keys(submitData).forEach(key => {
-        if (submitData[key as keyof CreatePersonData] === '') {
-          delete submitData[key as keyof CreatePersonData];
-        }
-      });
+      if (!formData.email.trim()) {
+        setError('Email is required');
+        return;
+      }
+      
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        setError('Please enter a valid email address');
+        return;
+      }
+
+      // Prepare data for submission
+      const submitData: any = {
+        name: formData.name.trim(),
+        person_type: formData.person_type,
+        email: formData.email.trim(),
+        active: formData.active,
+        country: formData.country || 'Brazil'
+      };
+      
+      // Add optional fields only if they have values
+      if (formData.phone?.trim()) submitData.phone = formData.phone.trim();
+      if (formData.address?.trim()) submitData.address = formData.address.trim();
+      if (formData.city?.trim()) submitData.city = formData.city.trim();
+      if (formData.state?.trim()) submitData.state = formData.state.trim();
+      if (formData.zip_code?.trim()) submitData.zip_code = formData.zip_code.trim();
+      
+      // Add person type specific fields
+      if (formData.person_type === 'physical') {
+        if (formData.cpf?.trim()) submitData.cpf = formData.cpf.trim();
+        if (formData.birth_date?.trim()) submitData.birth_date = formData.birth_date;
+      } else if (formData.person_type === 'legal') {
+        if (formData.cnpj?.trim()) submitData.cnpj = formData.cnpj.trim();
+        if (formData.company_name?.trim()) submitData.company_name = formData.company_name.trim();
+        if (formData.trade_name?.trim()) submitData.trade_name = formData.trade_name.trim();
+      }
 
       const success = await onSave(submitData);
+      
       if (success) {
         handleClose();
       }
