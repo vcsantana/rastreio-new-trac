@@ -16,7 +16,7 @@ import {
   Select,
   MenuItem,
 } from '@mui/material';
-import { Group } from '../../hooks/useGroups';
+import { Group, useGroups } from '../../hooks/useGroups';
 import { usePersons } from '../../hooks/usePersons';
 
 interface GroupDialogProps {
@@ -34,24 +34,31 @@ const GroupDialog: React.FC<GroupDialogProps> = ({
   group,
   mode,
 }) => {
-  const { persons } = usePersons();
+  const { persons, fetchPersons } = usePersons();
+  const { groups, fetchGroups } = useGroups();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     disabled: false,
     person_id: undefined as number | undefined,
+    parent_id: undefined as number | undefined,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
+      // Load groups for parent selection and persons for assignment
+      fetchGroups();
+      fetchPersons();
+      
       if (mode === 'edit' && group) {
         setFormData({
           name: group.name,
           description: group.description || '',
           disabled: group.disabled,
           person_id: group.person_id || undefined,
+          parent_id: group.parent_id || undefined,
         });
       } else {
         setFormData({
@@ -59,11 +66,12 @@ const GroupDialog: React.FC<GroupDialogProps> = ({
           description: '',
           disabled: false,
           person_id: undefined,
+          parent_id: undefined,
         });
       }
       setError(null);
     }
-  }, [open, mode, group]);
+  }, [open, mode, group, fetchGroups, fetchPersons]);
 
   const handleChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
@@ -135,6 +143,32 @@ const GroupDialog: React.FC<GroupDialogProps> = ({
               disabled={loading}
               placeholder="Optional description for this group"
             />
+          </Grid>
+          
+          <Grid size={{ xs: 12 }}>
+            <FormControl fullWidth disabled={loading}>
+              <InputLabel>Parent Group</InputLabel>
+              <Select
+                value={formData.parent_id || ''}
+                label="Parent Group"
+                onChange={(e) => setFormData(prev => ({ 
+                  ...prev, 
+                  parent_id: e.target.value ? Number(e.target.value) : undefined 
+                }))}
+              >
+                <MenuItem value="">
+                  <em>No Parent (Root Group)</em>
+                </MenuItem>
+                {groups
+                  .filter(g => mode === 'edit' ? g.id !== group?.id : true) // Prevent self-reference
+                  .map((parentGroup) => (
+                    <MenuItem key={parentGroup.id} value={parentGroup.id}>
+                      {parentGroup.level ? '  '.repeat(parentGroup.level) + '└─ ' : ''}
+                      {parentGroup.name}
+                    </MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
           </Grid>
           
           <Grid size={{ xs: 12 }}>

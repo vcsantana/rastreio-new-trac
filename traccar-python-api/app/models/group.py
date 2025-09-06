@@ -17,6 +17,9 @@ class Group(Base):
     # Person relationship
     person_id = Column(Integer, ForeignKey("persons.id"))
     
+    # Hierarchical relationship - self-referencing foreign key
+    parent_id = Column(Integer, ForeignKey("groups.id"), nullable=True)
+    
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -29,3 +32,7 @@ class Group(Base):
         secondary="user_group_permissions", 
         back_populates="group_permissions"
     )
+    
+    # Hierarchical relationships
+    parent = relationship("Group", remote_side=[id], back_populates="children")
+    children = relationship("Group", back_populates="parent", cascade="all, delete-orphan")

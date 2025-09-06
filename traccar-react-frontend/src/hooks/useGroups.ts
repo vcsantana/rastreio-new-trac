@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { API_ENDPOINTS } from '../api/apiConfig';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -7,17 +7,22 @@ export interface Group {
   name: string;
   description?: string;
   person_id?: number;
+  parent_id?: number;
   created_at: string;
   updated_at?: string;
   person_name?: string;
+  parent_name?: string;
   device_count?: number;
+  children_count?: number;
   disabled?: boolean;
+  level?: number;
 }
 
 export interface GroupCreate {
   name: string;
   description?: string;
   person_id?: number;
+  parent_id?: number;
   disabled?: boolean;
 }
 
@@ -25,6 +30,7 @@ export interface GroupUpdate {
   name?: string;
   description?: string;
   person_id?: number;
+  parent_id?: number;
   disabled?: boolean;
 }
 
@@ -34,7 +40,7 @@ export const useGroups = () => {
   const [error, setError] = useState<string | null>(null);
   const { token } = useAuth();
 
-  const fetchGroups = async () => {
+  const fetchGroups = useCallback(async () => {
     setLoading(true);
     setError(null);
     
@@ -57,9 +63,9 @@ export const useGroups = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
-  const createGroup = async (groupData: GroupCreate): Promise<Group | null> => {
+  const createGroup = useCallback(async (groupData: GroupCreate): Promise<Group | null> => {
     try {
       const response = await fetch(API_ENDPOINTS.GROUPS, {
         method: 'POST',
@@ -82,9 +88,9 @@ export const useGroups = () => {
       setError(err instanceof Error ? err.message : 'An error occurred');
       return null;
     }
-  };
+  }, [token]);
 
-  const updateGroup = async (groupId: number, groupData: GroupUpdate): Promise<Group | null> => {
+  const updateGroup = useCallback(async (groupId: number, groupData: GroupUpdate): Promise<Group | null> => {
     try {
       const response = await fetch(`${API_ENDPOINTS.GROUPS}/${groupId}`, {
         method: 'PUT',
@@ -107,9 +113,9 @@ export const useGroups = () => {
       setError(err instanceof Error ? err.message : 'An error occurred');
       return null;
     }
-  };
+  }, [token]);
 
-  const deleteGroup = async (groupId: number): Promise<boolean> => {
+  const deleteGroup = useCallback(async (groupId: number): Promise<boolean> => {
     try {
       const response = await fetch(`${API_ENDPOINTS.GROUPS}/${groupId}`, {
         method: 'DELETE',
@@ -129,9 +135,9 @@ export const useGroups = () => {
       setError(err instanceof Error ? err.message : 'An error occurred');
       return false;
     }
-  };
+  }, [token]);
 
-  const toggleGroupStatus = async (groupId: number): Promise<boolean> => {
+  const toggleGroupStatus = useCallback(async (groupId: number): Promise<boolean> => {
     try {
       const group = groups.find(g => g.id === groupId);
       if (!group) return false;
@@ -156,7 +162,7 @@ export const useGroups = () => {
       setError(err instanceof Error ? err.message : 'An error occurred');
       return false;
     }
-  };
+  }, [token, groups]);
 
   return {
     groups,

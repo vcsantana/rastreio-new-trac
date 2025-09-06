@@ -3,8 +3,9 @@ Groups API endpoints
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
-from typing import List
+from sqlalchemy import select, func, text
+from typing import List, Set
+from collections import defaultdict
 
 from app.database import get_db
 from app.models.user import User
@@ -16,33 +17,154 @@ from app.api.auth import get_current_user
 
 router = APIRouter()
 
+async def get_user_accessible_groups(db: AsyncSession, user_id: int, is_admin: bool) -> Set[int]:
+    """
+    Get all group IDs that a user can access, including inherited groups.
+    Returns a set of group IDs.
+    """
+    if is_admin:
+        # Admin can access all groups
+        result = await db.execute(select(Group.id))
+        return {row[0] for row in result.all()}
+    
+    # Get directly assigned groups
+    result = await db.execute(
+        select(text('group_id'))
+        .select_from(text('user_group_permissions'))
+        .where(text('user_id') == user_id)
+    )
+    direct_groups = {row[0] for row in result.all()}
+    
+    if not direct_groups:
+        return set()
+    
+    # Get all groups in the hierarchy (children of assigned groups)
+    accessible_groups = set(direct_groups)
+    
+    # Build hierarchy map
+    result = await db.execute(select(Group.id, Group.parent_id))
+    hierarchy = defaultdict(list)
+    for group_id, parent_id in result.all():
+        if parent_id:
+            hierarchy[parent_id].append(group_id)
+    
+    # Recursively find all children
+    def find_children(group_ids: Set[int]) -> Set[int]:
+        children = set()
+        for group_id in group_ids:
+            if group_id in hierarchy:
+                children.update(hierarchy[group_id])
+        return children
+    
+    # Keep finding children until no more are found
+    current_level = direct_groups
+    while current_level:
+        children = find_children(current_level)
+        new_groups = children - accessible_groups
+        if not new_groups:
+            break
+        accessible_groups.update(new_groups)
+        current_level = new_groups
+    
+    return accessible_groups
+
+async def calculate_group_levels(db: AsyncSession, group_ids: Set[int]) -> dict:
+    """
+    Calculate hierarchical levels for groups.
+    Returns a dict mapping group_id to level (0 = root, 1 = first level, etc.)
+    """
+    if not group_ids:
+        return {}
+    
+    # Get all groups with their parent relationships
+    result = await db.execute(
+        select(Group.id, Group.parent_id)
+        .where(Group.id.in_(group_ids))
+    )
+    
+    parent_map = {row[0]: row[1] for row in result.all()}
+    levels = {}
+    
+    def calculate_level(group_id: int) -> int:
+        if group_id in levels:
+            return levels[group_id]
+        
+        parent_id = parent_map.get(group_id)
+        if parent_id is None:
+            levels[group_id] = 0
+        else:
+            levels[group_id] = calculate_level(parent_id) + 1
+        
+        return levels[group_id]
+    
+    for group_id in group_ids:
+        calculate_level(group_id)
+    
+    return levels
+
 @router.get("/", response_model=List[GroupResponse])
 async def get_groups(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get all groups"""
+    """Get all groups that the user has permission to access, including inherited groups"""
+    # Get accessible group IDs (including inherited)
+    accessible_group_ids = await get_user_accessible_groups(db, current_user.id, current_user.is_admin)
+    
+    if not accessible_group_ids:
+        return []
+    
+    # Get groups with their details
     result = await db.execute(
-        select(Group, func.count(Device.id).label('device_count'), Person.name.label('person_name'))
+        select(
+            Group, 
+            func.count(Device.id).label('device_count'), 
+            Person.name.label('person_name')
+        )
         .outerjoin(Device, Group.id == Device.group_id)
         .outerjoin(Person, Group.person_id == Person.id)
+        .where(Group.id.in_(accessible_group_ids))
         .group_by(Group.id, Person.name)
         .order_by(Group.name)
     )
+    
     groups_with_counts = result.all()
+    
+    # Calculate hierarchical levels
+    levels = await calculate_group_levels(db, accessible_group_ids)
     
     groups = []
     for group, device_count, person_name in groups_with_counts:
+        # Get parent name if exists
+        parent_name = None
+        if group.parent_id:
+            parent_result = await db.execute(
+                select(Group.name).where(Group.id == group.parent_id)
+            )
+            parent_row = parent_result.first()
+            if parent_row:
+                parent_name = parent_row[0]
+        
+        # Get children count
+        children_result = await db.execute(
+            select(func.count(Group.id)).where(Group.parent_id == group.id)
+        )
+        children_count = children_result.scalar() or 0
+        
         group_dict = {
             "id": group.id,
             "name": group.name,
             "description": group.description,
             "disabled": group.disabled,
             "person_id": group.person_id,
+            "parent_id": group.parent_id,
             "created_at": group.created_at,
             "updated_at": group.updated_at,
             "device_count": device_count,
-            "person_name": person_name
+            "person_name": person_name,
+            "parent_name": parent_name,
+            "children_count": children_count,
+            "level": levels.get(group.id, 0)
         }
         groups.append(GroupResponse(**group_dict))
     
@@ -63,11 +185,42 @@ async def create_group(
             detail="Group with this name already exists"
         )
     
+    # Validate parent group if specified
+    if group_create.parent_id:
+        parent_result = await db.execute(select(Group).where(Group.id == group_create.parent_id))
+        parent_group = parent_result.scalar_one_or_none()
+        if not parent_group:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Parent group not found"
+            )
+        
+        # Check if user has permission to create groups under this parent
+        accessible_groups = await get_user_accessible_groups(db, current_user.id, current_user.is_admin)
+        if group_create.parent_id not in accessible_groups:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to create groups under this parent"
+            )
+        
+        # Prevent circular references (this will be checked after creation)
+        # We'll validate this in a separate function if needed
+    
     # Create group
     db_group = Group(**group_create.dict())
     db.add(db_group)
     await db.commit()
     await db.refresh(db_group)
+    
+    # Get parent name if exists
+    parent_name = None
+    if db_group.parent_id:
+        parent_result = await db.execute(
+            select(Group.name).where(Group.id == db_group.parent_id)
+        )
+        parent_row = parent_result.first()
+        if parent_row:
+            parent_name = parent_row[0]
     
     return GroupResponse(
         id=db_group.id,
@@ -75,10 +228,14 @@ async def create_group(
         description=db_group.description,
         disabled=db_group.disabled,
         person_id=db_group.person_id,
+        parent_id=db_group.parent_id,
         created_at=db_group.created_at,
         updated_at=db_group.updated_at,
         device_count=0,
-        person_name=None
+        person_name=None,
+        parent_name=parent_name,
+        children_count=0,
+        level=0  # Will be calculated properly in the list endpoint
     )
 
 @router.get("/{group_id}", response_model=GroupResponse)

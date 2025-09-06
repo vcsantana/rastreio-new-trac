@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -43,11 +43,17 @@ const Groups: React.FC = () => {
     groups,
     loading,
     error,
+    fetchGroups,
     createGroup,
     updateGroup,
     deleteGroup,
     toggleGroupStatus,
   } = useGroups();
+
+  // Load groups on component mount
+  useEffect(() => {
+    fetchGroups();
+  }, [fetchGroups]);
 
   // Dialog states
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
@@ -68,16 +74,47 @@ const Groups: React.FC = () => {
     return Array.from(new Set(persons));
   }, [groups]);
 
+  // Organize groups in hierarchical order
+  const hierarchicalGroups = useMemo(() => {
+    const groupMap = new Map(groups.map(group => [group.id, group]));
+    const rootGroups: Group[] = [];
+    const childGroups: Group[] = [];
+    
+    // Separate root groups (no parent) from child groups
+    groups.forEach(group => {
+      if (!group.parent_id) {
+        rootGroups.push(group);
+      } else {
+        childGroups.push(group);
+      }
+    });
+    
+    // Sort groups by level and name
+    const sortedGroups = [...rootGroups, ...childGroups].sort((a, b) => {
+      // First sort by level
+      const levelA = a.level || 0;
+      const levelB = b.level || 0;
+      if (levelA !== levelB) {
+        return levelA - levelB;
+      }
+      // Then sort by name
+      return a.name.localeCompare(b.name);
+    });
+    
+    return sortedGroups;
+  }, [groups]);
+
   // Filter groups based on current filters
   const filteredGroups = useMemo(() => {
-    return groups.filter(group => {
+    return hierarchicalGroups.filter(group => {
       // Search term filter
       if (searchTerm) {
         const searchLower = searchTerm.toLowerCase();
         const matchesSearch = 
           group.name.toLowerCase().includes(searchLower) ||
           (group.description && group.description.toLowerCase().includes(searchLower)) ||
-          (group.person_name && group.person_name.toLowerCase().includes(searchLower));
+          (group.person_name && group.person_name.toLowerCase().includes(searchLower)) ||
+          (group.parent_name && group.parent_name.toLowerCase().includes(searchLower));
         if (!matchesSearch) return false;
       }
 
@@ -94,7 +131,7 @@ const Groups: React.FC = () => {
 
       return true;
     });
-  }, [groups, searchTerm, statusFilter, personFilter]);
+  }, [hierarchicalGroups, searchTerm, statusFilter, personFilter]);
 
   // Clear all filters
   const clearFilters = () => {
@@ -319,8 +356,10 @@ const Groups: React.FC = () => {
               <TableRow>
                 <TableCell>Name</TableCell>
                 <TableCell>Description</TableCell>
+                <TableCell>Parent</TableCell>
                 <TableCell>Person</TableCell>
                 <TableCell>Devices</TableCell>
+                <TableCell>Children</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Created</TableCell>
                 <TableCell align="center">Actions</TableCell>
@@ -330,14 +369,36 @@ const Groups: React.FC = () => {
               {filteredGroups.map((group) => (
                 <TableRow key={group.id}>
                   <TableCell>
-                    <Typography variant="body2" fontWeight="medium">
-                      {group.name}
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {/* Hierarchical indentation */}
+                      {group.level && group.level > 0 && (
+                        <Box sx={{ width: group.level * 20, display: 'flex', alignItems: 'center' }}>
+                          {'└─'.repeat(group.level)}
+                        </Box>
+                      )}
+                      <Typography variant="body2" fontWeight="medium">
+                        {group.name}
+                      </Typography>
+                    </Box>
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" color="text.secondary">
                       {group.description || '-'}
                     </Typography>
+                  </TableCell>
+                  <TableCell>
+                    {group.parent_name ? (
+                      <Chip
+                        label={group.parent_name}
+                        size="small"
+                        color="info"
+                        variant="outlined"
+                      />
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        Root Group
+                      </Typography>
+                    )}
                   </TableCell>
                   <TableCell>
                     {group.person_name ? (
@@ -355,9 +416,17 @@ const Groups: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={group.device_count}
+                      label={group.device_count || 0}
                       size="small"
                       color="primary"
+                      variant="outlined"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={group.children_count || 0}
+                      size="small"
+                      color="success"
                       variant="outlined"
                     />
                   </TableCell>

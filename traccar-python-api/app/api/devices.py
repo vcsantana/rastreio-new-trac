@@ -10,6 +10,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.device import Device
 from app.models.group import Group
+from app.models.person import Person
 from app.schemas.device import DeviceCreate, DeviceUpdate, DeviceResponse
 from app.api.auth import get_current_user
 from app.services.websocket_service import websocket_service
@@ -23,13 +24,14 @@ async def get_devices(
 ):
     """Get all devices for the current user"""
     result = await db.execute(
-        select(Device, Group.name.label('group_name'))
+        select(Device, Group.name.label('group_name'), Person.name.label('person_name'))
         .outerjoin(Group, Device.group_id == Group.id)
+        .outerjoin(Person, Device.person_id == Person.id)
     )
-    devices_with_groups = result.all()
+    devices_with_relations = result.all()
     
     devices = []
-    for device, group_name in devices_with_groups:
+    for device, group_name, person_name in devices_with_relations:
         device_dict = {
             "id": device.id,
             "name": device.name,
@@ -38,13 +40,16 @@ async def get_devices(
             "model": device.model,
             "contact": device.contact,
             "category": device.category,
+            "license_plate": device.license_plate,
             "disabled": device.disabled,
             "group_id": device.group_id,
+            "person_id": device.person_id,
             "status": device.status,
             "protocol": device.protocol,
             "last_update": device.last_update,
             "created_at": device.created_at,
-            "group_name": group_name
+            "group_name": group_name,
+            "person_name": person_name
         }
         devices.append(DeviceResponse(**device_dict))
     
@@ -74,7 +79,37 @@ async def create_device(
     # Broadcast device creation via WebSocket
     await websocket_service.broadcast_device_status_update(db_device)
     
-    return DeviceResponse.from_orm(db_device)
+    # Get created device with relationships
+    result = await db.execute(
+        select(Device, Group.name.label('group_name'), Person.name.label('person_name'))
+        .outerjoin(Group, Device.group_id == Group.id)
+        .outerjoin(Person, Device.person_id == Person.id)
+        .where(Device.id == db_device.id)
+    )
+    device_data = result.first()
+    device, group_name, person_name = device_data
+    
+    device_dict = {
+        "id": device.id,
+        "name": device.name,
+        "unique_id": device.unique_id,
+        "phone": device.phone,
+        "model": device.model,
+        "contact": device.contact,
+        "category": device.category,
+        "license_plate": device.license_plate,
+        "disabled": device.disabled,
+        "group_id": device.group_id,
+        "person_id": device.person_id,
+        "status": device.status,
+        "protocol": device.protocol,
+        "last_update": device.last_update,
+        "created_at": device.created_at,
+        "group_name": group_name,
+        "person_name": person_name
+    }
+    
+    return DeviceResponse(**device_dict)
 
 @router.get("/{device_id}", response_model=DeviceResponse)
 async def get_device(
@@ -83,16 +118,42 @@ async def get_device(
     current_user: User = Depends(get_current_user)
 ):
     """Get a specific device"""
-    result = await db.execute(select(Device).where(Device.id == device_id))
-    device = result.scalar_one_or_none()
+    result = await db.execute(
+        select(Device, Group.name.label('group_name'), Person.name.label('person_name'))
+        .outerjoin(Group, Device.group_id == Group.id)
+        .outerjoin(Person, Device.person_id == Person.id)
+        .where(Device.id == device_id)
+    )
+    device_data = result.first()
     
-    if not device:
+    if not device_data:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Device not found"
         )
     
-    return DeviceResponse.from_orm(device)
+    device, group_name, person_name = device_data
+    device_dict = {
+        "id": device.id,
+        "name": device.name,
+        "unique_id": device.unique_id,
+        "phone": device.phone,
+        "model": device.model,
+        "contact": device.contact,
+        "category": device.category,
+        "license_plate": device.license_plate,
+        "disabled": device.disabled,
+        "group_id": device.group_id,
+        "person_id": device.person_id,
+        "status": device.status,
+        "protocol": device.protocol,
+        "last_update": device.last_update,
+        "created_at": device.created_at,
+        "group_name": group_name,
+        "person_name": person_name
+    }
+    
+    return DeviceResponse(**device_dict)
 
 @router.put("/{device_id}", response_model=DeviceResponse)
 async def update_device(
@@ -126,7 +187,37 @@ async def update_device(
     if old_status != device.status:
         await websocket_service.broadcast_device_status_update(device, old_status)
     
-    return DeviceResponse.from_orm(device)
+    # Get updated device with relationships
+    result = await db.execute(
+        select(Device, Group.name.label('group_name'), Person.name.label('person_name'))
+        .outerjoin(Group, Device.group_id == Group.id)
+        .outerjoin(Person, Device.person_id == Person.id)
+        .where(Device.id == device_id)
+    )
+    device_data = result.first()
+    device, group_name, person_name = device_data
+    
+    device_dict = {
+        "id": device.id,
+        "name": device.name,
+        "unique_id": device.unique_id,
+        "phone": device.phone,
+        "model": device.model,
+        "contact": device.contact,
+        "category": device.category,
+        "license_plate": device.license_plate,
+        "disabled": device.disabled,
+        "group_id": device.group_id,
+        "person_id": device.person_id,
+        "status": device.status,
+        "protocol": device.protocol,
+        "last_update": device.last_update,
+        "created_at": device.created_at,
+        "group_name": group_name,
+        "person_name": person_name
+    }
+    
+    return DeviceResponse(**device_dict)
 
 @router.delete("/{device_id}")
 async def delete_device(

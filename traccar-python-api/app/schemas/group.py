@@ -10,6 +10,7 @@ class GroupBase(BaseModel):
     description: Optional[str] = None
     disabled: Optional[bool] = False
     person_id: Optional[int] = None
+    parent_id: Optional[int] = None
 
 class GroupCreate(GroupBase):
     pass
@@ -19,6 +20,7 @@ class GroupUpdate(BaseModel):
     description: Optional[str] = None
     disabled: Optional[bool] = None
     person_id: Optional[int] = None
+    parent_id: Optional[int] = None
 
 class GroupResponse(GroupBase):
     id: int
@@ -26,6 +28,9 @@ class GroupResponse(GroupBase):
     updated_at: Optional[datetime] = None
     device_count: Optional[int] = 0
     person_name: Optional[str] = None
+    parent_name: Optional[str] = None
+    children_count: Optional[int] = 0
+    level: Optional[int] = 0  # Hierarchical level (0 = root, 1 = first level, etc.)
 
     class Config:
         from_attributes = True
