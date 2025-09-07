@@ -34,10 +34,12 @@ import {
   Search as SearchIcon,
   FilterList as FilterIcon,
   Clear as ClearIcon,
+  Send as SendIcon,
 } from '@mui/icons-material';
 import { useDevices, Device } from '../hooks/useDevices';
 import DeviceDialog from '../components/common/DeviceDialog';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import { CommandDialog } from '../components/commands/CommandDialog';
 
 const Devices: React.FC = () => {
   const {
@@ -59,6 +61,7 @@ const Devices: React.FC = () => {
   // Dialog states
   const [deviceDialogOpen, setDeviceDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [commandDialogOpen, setCommandDialogOpen] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [confirmAction, setConfirmAction] = useState<'delete' | 'disable' | 'enable'>('delete');
@@ -194,6 +197,11 @@ const Devices: React.FC = () => {
     setConfirmAction(device.disabled ? 'enable' : 'disable');
     setSelectedDevice(device);
     setConfirmDialogOpen(true);
+  };
+
+  const handleSendCommand = (device: Device) => {
+    setSelectedDevice(device);
+    setCommandDialogOpen(true);
   };
 
   const handleSaveDevice = async (data: any) => {
@@ -533,6 +541,17 @@ const Devices: React.FC = () => {
                 </TableCell>
                 <TableCell>{device.last_update || 'Never'}</TableCell>
                 <TableCell align="right">
+                  <Tooltip title="Send Command">
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={() => handleSendCommand(device)}
+                      disabled={loading || device.disabled}
+                    >
+                      <SendIcon />
+                    </IconButton>
+                  </Tooltip>
+                  
                   <Tooltip title="Edit Device">
                     <IconButton
                       size="small"
@@ -607,6 +626,17 @@ const Devices: React.FC = () => {
         onConfirm={handleConfirmAction}
         loading={loading}
         {...getConfirmDialogProps()}
+      />
+
+      {/* Command Dialog */}
+      <CommandDialog
+        open={commandDialogOpen}
+        onClose={() => setCommandDialogOpen(false)}
+        deviceId={selectedDevice?.id}
+        onCommandSent={() => {
+          setCommandDialogOpen(false);
+          setSelectedDevice(null);
+        }}
       />
     </Box>
   );

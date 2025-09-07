@@ -21,6 +21,7 @@ const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const Devices = React.lazy(() => import('./pages/Devices'));
 const Groups = React.lazy(() => import('./pages/Groups'));
 const Persons = React.lazy(() => import('./pages/Persons'));
+const Commands = React.lazy(() => import('./pages/Commands'));
 const Reports = React.lazy(() => import('./pages/ReportsPage'));
 const Settings = React.lazy(() => import('./pages/Settings'));
 const LogsViewer = React.lazy(() => import('./components/LogsViewer'));
@@ -58,6 +59,7 @@ function App() {
                         <Route path="devices" element={<Devices />} />
                         <Route path="groups" element={<Groups />} />
                         <Route path="persons" element={<Persons />} />
+                        <Route path="commands" element={<Commands />} />
                         
                         {/* Admin-only routes */}
                         <Route path="reports" element={

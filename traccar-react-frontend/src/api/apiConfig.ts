@@ -31,6 +31,18 @@ export const API_ENDPOINTS = {
   // Users
   USERS: `${API_BASE_URL}/api/users`,
   
+  // Commands
+  COMMANDS: `${API_BASE_URL}/api/commands`,
+  COMMAND_TYPES: `${API_BASE_URL}/api/commands/types`,
+  COMMAND_STATUSES: `${API_BASE_URL}/api/commands/statuses`,
+  COMMAND_PRIORITIES: `${API_BASE_URL}/api/commands/priorities`,
+  COMMAND_STATS: `${API_BASE_URL}/api/commands/stats/summary`,
+  COMMAND_QUEUE: `${API_BASE_URL}/api/commands/queue`,
+  COMMAND_BULK: `${API_BASE_URL}/api/commands/bulk`,
+  COMMAND_RETRY: `${API_BASE_URL}/api/commands/retry`,
+  COMMAND_CANCEL: `${API_BASE_URL}/api/commands/cancel`,
+  DEVICE_COMMANDS: (deviceId: number) => `${API_BASE_URL}/api/commands/device/${deviceId}`,
+  
   // WebSocket
   WEBSOCKET: WS_URL,
   

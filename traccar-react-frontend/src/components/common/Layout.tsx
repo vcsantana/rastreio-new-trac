@@ -26,6 +26,7 @@ import {
   DeviceHub as DevicesIcon,
   Group as GroupsIcon,
   Person as PersonsIcon,
+  Send as CommandsIcon,
   Assessment as ReportsIcon,
   Settings as SettingsIcon,
   Notifications as NotificationsIcon,
@@ -79,6 +80,12 @@ const allNavigationItems: NavigationItem[] = [
     label: 'Persons',
     path: '/persons',
     icon: <PersonsIcon />,
+  },
+  {
+    id: 'commands',
+    label: 'Commands',
+    path: '/commands',
+    icon: <CommandsIcon />,
   },
   {
     id: 'reports',
@@ -347,16 +354,14 @@ export const Layout: React.FC = () => {
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
         {user?.is_admin && (
-          <>
-            <MenuItem onClick={() => handleNavigation('/settings')}>
-              <ListItemIcon>
-                <SettingsIcon fontSize="small" />
-              </ListItemIcon>
-              Settings
-            </MenuItem>
-            <Divider />
-          </>
+          <MenuItem onClick={() => handleNavigation('/settings')}>
+            <ListItemIcon>
+              <SettingsIcon fontSize="small" />
+            </ListItemIcon>
+            Settings
+          </MenuItem>
         )}
+        {user?.is_admin && <Divider />}
         <MenuItem onClick={handleLogout}>
           <ListItemIcon>
             <LogoutIcon fontSize="small" />
