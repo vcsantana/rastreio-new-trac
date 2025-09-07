@@ -1,14 +1,18 @@
-import { useEffect, useId, useMemo, useCallback } from 'react';
+import { useEffect, useId, useMemo } from 'react';
 import maplibregl from 'maplibre-gl';
 
 interface Position {
   id: number;
-  deviceId: number;
+  deviceId?: number;
+  device_id?: number;
   latitude: number;
   longitude: number;
   course?: number;
   speed?: number;
   fixTime?: string;
+  server_time?: string;
+  device_time?: string;
+  fix_time?: string;
   attributes?: Record<string, any>;
 }
 
@@ -27,6 +31,7 @@ interface DeviceMarkersProps {
   devices: Device[];
   onMarkerClick?: (deviceId: number, position: Position) => void;
   selectedDeviceId?: number;
+  showLabels?: boolean;
 }
 
 const DeviceMarkers: React.FC<DeviceMarkersProps> = ({
@@ -35,14 +40,17 @@ const DeviceMarkers: React.FC<DeviceMarkersProps> = ({
   positions,
   devices,
   onMarkerClick,
-  selectedDeviceId
+  selectedDeviceId,
+  showLabels = true
 }) => {
+  console.log('📍 DeviceMarkers render - map:', !!map, 'mapReady:', mapReady, 'positions:', positions?.length || 0, 'devices:', devices?.length || 0);
   const sourceId = useId();
   const layerId = useId();
   const selectedLayerId = useId();
 
   // Create device lookup map (memoized)
   const deviceMap = useMemo(() => {
+    if (!devices) return {};
     return devices.reduce((acc, device) => {
       acc[device.id] = device;
       return acc;
@@ -99,56 +107,81 @@ const DeviceMarkers: React.FC<DeviceMarkersProps> = ({
       }
     });
 
-    // Add labels (commented out due to glyphs requirement)
-    // map.addLayer({
-    //   id: `${layerId}-labels`,
-    //   type: 'symbol',
-    //   source: sourceId,
-    //   layout: {
-    //     'text-field': '{name}',
-    //     'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-    //     'text-size': 12,
-    //     'text-anchor': 'top',
-    //     'text-offset': [0, 1.5]
-    //   },
-    //   paint: {
-    //     'text-color': '#333333',
-    //     'text-halo-color': '#ffffff',
-    //     'text-halo-width': 1
-    //   }
-    // });
+    // Add labels for device names (if enabled)
+    if (showLabels) {
+      map.addLayer({
+        id: `${layerId}-labels`,
+        type: 'symbol',
+        source: sourceId,
+        layout: {
+          'text-field': ['get', 'name'],
+          'text-size': 12,
+          'text-anchor': 'top',
+          'text-offset': [0, 1.5],
+          'text-allow-overlap': false,
+          'text-ignore-placement': false
+        },
+        paint: {
+          'text-color': '#333333',
+          'text-halo-color': '#ffffff',
+          'text-halo-width': 2,
+          'text-halo-blur': 1
+        }
+      });
+    }
 
     // Add click handlers
     const handleClick = (e: maplibregl.MapMouseEvent) => {
-      const features = map.queryRenderedFeatures(e.point, {
-        layers: [layerId, selectedLayerId]
-      });
-      
-      if (features.length > 0) {
-        const feature = features[0];
-        const deviceId = feature.properties?.deviceId;
-        const position = positions.find(p => p.deviceId === deviceId);
-        
-        if (deviceId && position && onMarkerClick) {
-          onMarkerClick(deviceId, position);
+      try {
+        const layers = [layerId, selectedLayerId];
+        // Only add labels layer if it exists in the map
+        if (showLabels && map && map.getLayer && map.getLayer(`${layerId}-labels`)) {
+          layers.push(`${layerId}-labels`);
         }
+        
+        const features = map.queryRenderedFeatures(e.point, { layers });
+        
+        if (features.length > 0) {
+          const feature = features[0];
+          const deviceId = feature.properties?.deviceId;
+          const position = positions?.find(p => (p.deviceId || p.device_id) === deviceId);
+          
+          if (deviceId && position && onMarkerClick) {
+            onMarkerClick(deviceId, position);
+          }
+        }
+      } catch (error) {
+        console.warn('DeviceMarkers click handler error:', error);
       }
     };
 
     const handleMouseEnter = () => {
-      map.getCanvas().style.cursor = 'pointer';
+      if (map && map.getCanvas) {
+        map.getCanvas().style.cursor = 'pointer';
+      }
     };
 
     const handleMouseLeave = () => {
-      map.getCanvas().style.cursor = '';
+      if (map && map.getCanvas) {
+        map.getCanvas().style.cursor = '';
+      }
     };
 
-    map.on('click', layerId, handleClick);
-    map.on('click', selectedLayerId, handleClick);
-    map.on('mouseenter', layerId, handleMouseEnter);
-    map.on('mouseenter', selectedLayerId, handleMouseEnter);
-    map.on('mouseleave', layerId, handleMouseLeave);
-    map.on('mouseleave', selectedLayerId, handleMouseLeave);
+    if (map) {
+      map.on('click', layerId, handleClick);
+      map.on('click', selectedLayerId, handleClick);
+      map.on('mouseenter', layerId, handleMouseEnter);
+      map.on('mouseenter', selectedLayerId, handleMouseEnter);
+      map.on('mouseleave', layerId, handleMouseLeave);
+      map.on('mouseleave', selectedLayerId, handleMouseLeave);
+      
+      // Only add event listeners if labels layer exists
+      if (showLabels && map.getLayer(`${layerId}-labels`)) {
+        map.on('click', `${layerId}-labels`, handleClick);
+        map.on('mouseenter', `${layerId}-labels`, handleMouseEnter);
+        map.on('mouseleave', `${layerId}-labels`, handleMouseLeave);
+      }
+    }
 
     // Cleanup
     return () => {
@@ -157,29 +190,41 @@ const DeviceMarkers: React.FC<DeviceMarkersProps> = ({
       
       try {
         // Remove layers if they exist
-        if (map.getLayer(selectedLayerId)) {
+        if (showLabels && map && map.getLayer && map.getLayer(`${layerId}-labels`)) {
+          map.removeLayer(`${layerId}-labels`);
+        }
+        if (map && map.getLayer && map.getLayer(selectedLayerId)) {
           map.removeLayer(selectedLayerId);
         }
-        if (map.getLayer(layerId)) {
+        if (map && map.getLayer && map.getLayer(layerId)) {
           map.removeLayer(layerId);
         }
-        if (map.getSource(sourceId)) {
+        if (map && map.getSource && map.getSource(sourceId)) {
           map.removeSource(sourceId);
         }
         
         // Remove event listeners
-        map.off('click', layerId, handleClick);
-        map.off('click', selectedLayerId, handleClick);
-        map.off('mouseenter', layerId, handleMouseEnter);
-        map.off('mouseenter', selectedLayerId, handleMouseEnter);
-        map.off('mouseleave', layerId, handleMouseLeave);
-        map.off('mouseleave', selectedLayerId, handleMouseLeave);
+        if (map) {
+          map.off('click', layerId, handleClick);
+          map.off('click', selectedLayerId, handleClick);
+          map.off('mouseenter', layerId, handleMouseEnter);
+          map.off('mouseenter', selectedLayerId, handleMouseEnter);
+          map.off('mouseleave', layerId, handleMouseLeave);
+          map.off('mouseleave', selectedLayerId, handleMouseLeave);
+          
+          // Only remove label event listeners if the layer exists
+          if (showLabels && map.getLayer && map.getLayer(`${layerId}-labels`)) {
+            map.off('click', `${layerId}-labels`, handleClick);
+            map.off('mouseenter', `${layerId}-labels`, handleMouseEnter);
+            map.off('mouseleave', `${layerId}-labels`, handleMouseLeave);
+          }
+        }
       } catch (error) {
         // Silently handle cleanup errors when map is being destroyed
         console.warn('Error during DeviceMarkers cleanup:', error);
       }
     };
-  }, [map, mapReady, sourceId, layerId, selectedLayerId, onMarkerClick]);
+  }, [map, mapReady, sourceId, layerId, selectedLayerId, onMarkerClick, showLabels]);
 
   // Update markers when positions or devices change
   useEffect(() => {
@@ -190,9 +235,13 @@ const DeviceMarkers: React.FC<DeviceMarkersProps> = ({
       if (!source) return;
 
     const features = positions
-      .filter(position => deviceMap[position.deviceId])
+      .filter(position => {
+        const deviceId = position.deviceId || position.device_id;
+        return deviceId && deviceMap[deviceId];
+      })
       .map(position => {
-        const device = deviceMap[position.deviceId];
+        const deviceId = position.deviceId || position.device_id;
+        const device = deviceMap[deviceId!];
         return {
           type: 'Feature' as const,
           geometry: {
@@ -206,7 +255,7 @@ const DeviceMarkers: React.FC<DeviceMarkersProps> = ({
             selected: device.id === selectedDeviceId,
             speed: position.speed || 0,
             course: position.course || 0,
-            fixTime: position.fixTime
+            fixTime: position.fixTime || position.server_time || position.fix_time
           }
         };
       });

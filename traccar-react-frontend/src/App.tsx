@@ -3,14 +3,15 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Provider } from 'react-redux';
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline, useMediaQuery } from '@mui/material';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+// import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+// import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 
 import { store } from './store';
 import { theme } from './styles/theme';
 import { AuthProvider } from './contexts/AuthContext';
 import { WebSocketProvider } from './contexts/WebSocketContext';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
+import { AdminRoute } from './components/common/AdminRoute';
 import { Layout } from './components/common/Layout';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
@@ -20,7 +21,7 @@ const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const Devices = React.lazy(() => import('./pages/Devices'));
 const Groups = React.lazy(() => import('./pages/Groups'));
 const Persons = React.lazy(() => import('./pages/Persons'));
-const Reports = React.lazy(() => import('./pages/Reports'));
+const Reports = React.lazy(() => import('./pages/ReportsPage'));
 const Settings = React.lazy(() => import('./pages/Settings'));
 const LogsViewer = React.lazy(() => import('./components/LogsViewer'));
 const UnknownDevices = React.lazy(() => import('./pages/UnknownDevices'));
@@ -35,12 +36,11 @@ function App() {
       <Provider store={store}>
         <ThemeProvider theme={theme(prefersDarkMode)}>
           <CssBaseline />
-          <LocalizationProvider dateAdapter={AdapterDayjs}>
-            <AuthProvider>
-              <WebSocketProvider>
-                <Router>
-                  <React.Suspense fallback={<LoadingSpinner />}>
-                    <Routes>
+          <AuthProvider>
+            <WebSocketProvider>
+              <Router>
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Routes>
                       {/* Public routes */}
                       <Route path="/login" element={<Login />} />
                       
@@ -58,11 +58,33 @@ function App() {
                         <Route path="devices" element={<Devices />} />
                         <Route path="groups" element={<Groups />} />
                         <Route path="persons" element={<Persons />} />
-                        <Route path="reports" element={<Reports />} />
-                        <Route path="logs" element={<LogsViewer />} />
-                        <Route path="unknown-devices" element={<UnknownDevices />} />
-                        <Route path="users" element={<Users />} />
-                        <Route path="settings" element={<Settings />} />
+                        
+                        {/* Admin-only routes */}
+                        <Route path="reports" element={
+                          <AdminRoute>
+                            <Reports />
+                          </AdminRoute>
+                        } />
+                        <Route path="logs" element={
+                          <AdminRoute>
+                            <LogsViewer />
+                          </AdminRoute>
+                        } />
+                        <Route path="unknown-devices" element={
+                          <AdminRoute>
+                            <UnknownDevices />
+                          </AdminRoute>
+                        } />
+                        <Route path="users" element={
+                          <AdminRoute>
+                            <Users />
+                          </AdminRoute>
+                        } />
+                        <Route path="settings" element={
+                          <AdminRoute>
+                            <Settings />
+                          </AdminRoute>
+                        } />
                       </Route>
                       
                       {/* Catch all route */}
@@ -72,7 +94,6 @@ function App() {
                 </Router>
               </WebSocketProvider>
             </AuthProvider>
-          </LocalizationProvider>
         </ThemeProvider>
       </Provider>
     </ErrorBoundary>

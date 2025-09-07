@@ -8,7 +8,6 @@ import {
   useTheme,
   Alert,
   CircularProgress,
-  Button,
 } from '@mui/material';
 import {
   DeviceHub as DevicesIcon,
@@ -71,106 +70,57 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
   );
 };
 
-const DashboardTest: React.FC = () => {
+const DashboardSimple: React.FC = () => {
   const theme = useTheme();
   const [selectedDeviceId, setSelectedDeviceId] = useState<number | undefined>();
   const [devices, setDevices] = useState<any[]>([]);
   const [positions, setPositions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
 
-  // Login function
-  const handleLogin = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch('http://localhost:8000/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: 'test@traccar.com',
-          password: 'test123'
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Login failed: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      setToken(data.access_token);
-      localStorage.setItem('access_token', data.access_token);
-      
-      // Fetch data after login
-      await fetchData(data.access_token);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch data function
-  const fetchData = async (authToken: string) => {
-    try {
-      console.log('🔍 Starting fetchData with token:', authToken ? 'Token exists' : 'No token');
-      
-      const headers = {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'application/json',
-      };
-
-      console.log('📡 Fetching devices...');
-      // Fetch devices
-      const devicesResponse = await fetch('http://localhost:8000/api/devices', { headers });
-      console.log('📡 Devices response status:', devicesResponse.status);
-      if (!devicesResponse.ok) {
-        throw new Error(`Failed to fetch devices: ${devicesResponse.statusText}`);
-      }
-      const devicesData = await devicesResponse.json();
-      console.log('📱 Devices data:', devicesData.length, 'devices');
-
-      console.log('📍 Fetching positions...');
-      // Fetch positions
-      const positionsResponse = await fetch('http://localhost:8000/api/positions/latest', { headers });
-      console.log('📍 Positions response status:', positionsResponse.status);
-      if (!positionsResponse.ok) {
-        throw new Error(`Failed to fetch positions: ${positionsResponse.statusText}`);
-      }
-      const positionsData = await positionsResponse.json();
-      console.log('📍 Positions data:', positionsData.length, 'positions');
-
-      setDevices(devicesData);
-      setPositions(positionsData);
-      setError(null);
-      setLoading(false);
-      console.log('✅ Data fetch completed successfully - loading set to false');
-    } catch (err) {
-      console.error('❌ Error fetching data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch data');
-      setLoading(false);
-    }
-  };
-
-  // Check if already logged in
+  // Fetch data from API
   useEffect(() => {
-    console.log('🚀 DashboardTest useEffect running...');
-    const storedToken = localStorage.getItem('access_token');
-    console.log('🔑 Stored token:', storedToken ? 'Token exists' : 'No token');
-    
-    if (storedToken) {
-      console.log('✅ Token found, setting token and fetching data');
-      setToken(storedToken);
-      setLoading(true); // Set loading to true before fetching
-      fetchData(storedToken);
-    } else {
-      console.log('❌ No token found, setting loading to false');
-      setLoading(false);
-    }
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Get token from localStorage
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          throw new Error('No authentication token found');
+        }
+
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        };
+
+        // Fetch devices
+        const devicesResponse = await fetch('http://localhost:8000/api/devices', { headers });
+        if (!devicesResponse.ok) {
+          throw new Error(`Failed to fetch devices: ${devicesResponse.statusText}`);
+        }
+        const devicesData = await devicesResponse.json();
+
+        // Fetch positions
+        const positionsResponse = await fetch('http://localhost:8000/api/positions/latest', { headers });
+        if (!positionsResponse.ok) {
+          throw new Error(`Failed to fetch positions: ${positionsResponse.statusText}`);
+        }
+        const positionsData = await positionsResponse.json();
+
+        setDevices(devicesData);
+        setPositions(positionsData);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch data');
+        console.error('Error fetching data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   // Transform data for map display
@@ -235,49 +185,8 @@ const DashboardTest: React.FC = () => {
     ];
   }, [mapDevices, mapPositions, theme.palette]);
 
-  // Debug logs
-  console.log('🎯 DashboardTest render - token:', !!token, 'loading:', loading, 'error:', error, 'devices:', devices.length, 'positions:', positions.length);
-
-  // Show login button if not authenticated
-  if (!token) {
-    console.log('🔐 No token, showing login button');
-    return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        flexDirection: 'column',
-        gap: 2,
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-      }}>
-        <Typography variant="h4" color="rgba(255, 255, 255, 0.9)" fontWeight="bold">
-          Traccar Dashboard
-        </Typography>
-        <Typography variant="h6" color="rgba(255, 255, 255, 0.7)">
-          Clique no botão para fazer login automaticamente
-        </Typography>
-        <Button
-          variant="contained"
-          size="large"
-          onClick={handleLogin}
-          disabled={loading}
-          sx={{ mt: 2 }}
-        >
-          {loading ? 'Fazendo Login...' : 'Login Automático'}
-        </Button>
-        {error && (
-          <Alert severity="error" sx={{ mt: 2, maxWidth: 400 }}>
-            {error}
-          </Alert>
-        )}
-      </Box>
-    );
-  }
-
   // Show loading state
   if (loading) {
-    console.log('⏳ Loading state, showing spinner');
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
         <CircularProgress size={60} />
@@ -290,7 +199,6 @@ const DashboardTest: React.FC = () => {
 
   // Show error state
   if (error) {
-    console.log('❌ Error state, showing error message');
     return (
       <Box>
         <Typography variant="h4" component="h1" gutterBottom>
@@ -299,15 +207,10 @@ const DashboardTest: React.FC = () => {
         <Alert severity="error" sx={{ mb: 3 }}>
           Error loading dashboard data: {error}
         </Alert>
-        <Button variant="contained" onClick={handleLogin}>
-          Tentar Novamente
-        </Button>
       </Box>
     );
   }
 
-  console.log('🗺️ Rendering map with', mapPositions.length, 'positions and', mapDevices.length, 'devices');
-  
   return (
     <Box sx={{ 
       position: 'relative', 
@@ -373,4 +276,4 @@ const DashboardTest: React.FC = () => {
   );
 };
 
-export default DashboardTest;
+export default DashboardSimple;

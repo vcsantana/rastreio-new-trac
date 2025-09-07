@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import { Device, CreateDeviceData, UpdateDeviceData } from '../../hooks/useDevices';
 import { useGroups } from '../../hooks/useGroups';
+import { usePersons } from '../../hooks/usePersons';
 
 interface DeviceDialogProps {
   open: boolean;
@@ -44,6 +45,8 @@ const CATEGORY_OPTIONS = [
   { value: 'van', label: 'Van' },
   { value: 'bus', label: 'Bus' },
   { value: 'boat', label: 'Boat' },
+  { value: 'iphone', label: 'iPhone' },
+  { value: 'android', label: 'Android' },
   { value: 'other', label: 'Other' },
 ];
 
@@ -54,7 +57,8 @@ const DeviceDialog: React.FC<DeviceDialogProps> = ({
   device,
   title,
 }) => {
-  const { groups } = useGroups();
+  const { groups, fetchGroups } = useGroups();
+  const { persons, fetchPersons } = usePersons();
   const [formData, setFormData] = useState<CreateDeviceData>({
     name: '',
     unique_id: '',
@@ -63,7 +67,9 @@ const DeviceDialog: React.FC<DeviceDialogProps> = ({
     contact: '',
     category: 'car',
     phone: '',
+    license_plate: '',
     group_id: undefined,
+    person_id: undefined,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +77,10 @@ const DeviceDialog: React.FC<DeviceDialogProps> = ({
   // Reset form when dialog opens/closes or device changes
   useEffect(() => {
     if (open) {
+      // Load groups and persons for selection
+      fetchGroups();
+      fetchPersons();
+      
       if (device) {
         setFormData({
           name: device.name || '',
@@ -80,7 +90,9 @@ const DeviceDialog: React.FC<DeviceDialogProps> = ({
           contact: device.contact || '',
           category: device.category || 'car',
           phone: device.phone || '',
+          license_plate: device.license_plate || '',
           group_id: device.group_id || undefined,
+          person_id: device.person_id || undefined,
         });
       } else {
         setFormData({
@@ -91,12 +103,14 @@ const DeviceDialog: React.FC<DeviceDialogProps> = ({
           contact: '',
           category: 'car',
           phone: '',
+          license_plate: '',
           group_id: undefined,
+          person_id: undefined,
         });
       }
       setError(null);
     }
-  }, [open, device]);
+  }, [open, device, fetchGroups, fetchPersons]);
 
   const handleInputChange = (field: keyof CreateDeviceData) => (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | any
@@ -239,6 +253,17 @@ const DeviceDialog: React.FC<DeviceDialogProps> = ({
             </Grid>
             
             <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="License Plate"
+                value={formData.license_plate}
+                onChange={handleInputChange('license_plate')}
+                disabled={loading}
+                helperText="Vehicle license plate (optional)"
+              />
+            </Grid>
+            
+            <Grid item xs={12} sm={6}>
               <FormControl fullWidth disabled={loading}>
                 <InputLabel>Group</InputLabel>
                 <Select
@@ -252,6 +277,26 @@ const DeviceDialog: React.FC<DeviceDialogProps> = ({
                   {groups.map((group) => (
                     <MenuItem key={group.id} value={group.id}>
                       {group.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth disabled={loading}>
+                <InputLabel>Person</InputLabel>
+                <Select
+                  value={formData.person_id || ''}
+                  label="Person"
+                  onChange={handleInputChange('person_id')}
+                >
+                  <MenuItem value="">
+                    <em>No Person</em>
+                  </MenuItem>
+                  {persons.map((person) => (
+                    <MenuItem key={person.id} value={person.id}>
+                      {person.name}
                     </MenuItem>
                   ))}
                 </Select>

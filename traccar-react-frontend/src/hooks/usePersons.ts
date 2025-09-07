@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { API_ENDPOINTS } from '../api/apiConfig';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -52,7 +52,7 @@ export const usePersons = () => {
   const [error, setError] = useState<string | null>(null);
   const { token } = useAuth();
 
-  const fetchPersons = async () => {
+  const fetchPersons = useCallback(async () => {
     setLoading(true);
     setError(null);
     
@@ -75,9 +75,9 @@ export const usePersons = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
-  const createPerson = async (personData: Partial<Person>): Promise<Person | null> => {
+  const createPerson = useCallback(async (personData: Partial<Person>): Promise<Person | null> => {
     setLoading(true);
     setError(null);
     
@@ -105,9 +105,9 @@ export const usePersons = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
-  const updatePerson = async (id: number, personData: Partial<Person>): Promise<Person | null> => {
+  const updatePerson = useCallback(async (id: number, personData: Partial<Person>): Promise<Person | null> => {
     setLoading(true);
     setError(null);
     
@@ -137,9 +137,9 @@ export const usePersons = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
-  const deletePerson = async (id: number): Promise<boolean> => {
+  const deletePerson = useCallback(async (id: number): Promise<boolean> => {
     setLoading(true);
     setError(null);
     
@@ -164,9 +164,9 @@ export const usePersons = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
-  const togglePersonStatus = async (id: number): Promise<boolean> => {
+  const togglePersonStatus = useCallback(async (id: number): Promise<boolean> => {
     setLoading(true);
     setError(null);
     
@@ -201,7 +201,7 @@ export const usePersons = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, persons]);
 
   return {
     persons,

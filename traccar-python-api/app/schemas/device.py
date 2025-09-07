@@ -12,8 +12,10 @@ class DeviceBase(BaseModel):
     model: Optional[str] = None
     contact: Optional[str] = None
     category: Optional[str] = None
+    license_plate: Optional[str] = None
     disabled: Optional[bool] = False
     group_id: Optional[int] = None
+    person_id: Optional[int] = None
 
 class DeviceCreate(DeviceBase):
     pass
@@ -24,8 +26,10 @@ class DeviceUpdate(BaseModel):
     model: Optional[str] = None
     contact: Optional[str] = None
     category: Optional[str] = None
+    license_plate: Optional[str] = None
     disabled: Optional[bool] = None
     group_id: Optional[int] = None
+    person_id: Optional[int] = None
 
 class DeviceResponse(DeviceBase):
     id: int
@@ -34,6 +38,7 @@ class DeviceResponse(DeviceBase):
     last_update: Optional[datetime] = None
     created_at: datetime
     group_name: Optional[str] = None
+    person_name: Optional[str] = None
     
     class Config:
         from_attributes = True

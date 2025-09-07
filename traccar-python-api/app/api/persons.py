@@ -10,6 +10,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.person import Person, PersonType
 from app.models.group import Group
+from app.api.groups import get_user_accessible_groups
 from app.schemas.person import PersonCreate, PersonUpdate, PersonResponse
 from app.api.auth import get_current_user
 
@@ -23,8 +24,21 @@ async def get_persons(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get all persons with optional filters"""
+    """Get all persons with optional filters based on user group permissions"""
+    # Get accessible groups for the user
+    accessible_groups = await get_user_accessible_groups(db, current_user.id, current_user.is_admin)
+    
     query = select(Person, func.count(Group.id).label('group_count')).outerjoin(Group, Person.id == Group.person_id)
+    
+    # Filter by accessible groups for non-admin users
+    if not current_user.is_admin:
+        if not accessible_groups:
+            # User has no group permissions, return empty list
+            return []
+        query = query.where(
+            (Group.id.in_(accessible_groups)) |
+            (Group.id.is_(None))  # Include persons without group
+        )
     
     # Apply filters
     conditions = []
@@ -91,6 +105,15 @@ async def create_person(
             detail="Person with this email already exists"
         )
     
+    # Check group permissions for non-admin users
+    if not current_user.is_admin and person_create.group_id:
+        accessible_groups = await get_user_accessible_groups(db, current_user.id, current_user.is_admin)
+        if person_create.group_id not in accessible_groups:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to create persons in this group"
+            )
+    
     # Check CPF uniqueness for physical persons
     if person_create.person_type == PersonType.PHYSICAL and person_create.cpf:
         result = await db.execute(select(Person).where(Person.cpf == person_create.cpf))
@@ -153,6 +176,26 @@ async def get_person(
             detail="Person not found"
         )
     
+    # Check permissions for non-admin users
+    if not current_user.is_admin:
+        # Check if person belongs to any group the user has access to
+        accessible_groups = await get_user_accessible_groups(db, current_user.id, current_user.is_admin)
+        if accessible_groups:
+            person_groups_result = await db.execute(
+                select(Group.id).where(Group.person_id == person_id)
+            )
+            person_groups = {row[0] for row in person_groups_result.all()}
+            if not person_groups.intersection(accessible_groups):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You don't have permission to view this person"
+                )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to view this person"
+            )
+    
     # Get group count
     group_count_result = await db.execute(
         select(func.count(Group.id)).where(Group.person_id == person_id)
@@ -197,6 +240,32 @@ async def update_person(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Person not found"
         )
+    
+    # Check permissions for non-admin users
+    if not current_user.is_admin:
+        accessible_groups = await get_user_accessible_groups(db, current_user.id, current_user.is_admin)
+        if accessible_groups:
+            person_groups_result = await db.execute(
+                select(Group.id).where(Group.person_id == person_id)
+            )
+            person_groups = {row[0] for row in person_groups_result.all()}
+            if not person_groups.intersection(accessible_groups):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You don't have permission to modify this person"
+                )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to modify this person"
+            )
+        
+        # Check if user is trying to change group to one they don't have access to
+        if person_update.group_id and person_update.group_id not in accessible_groups:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to assign persons to this group"
+            )
     
     # Check email uniqueness if being updated
     if person_update.email and person_update.email != person.email:
@@ -282,6 +351,25 @@ async def delete_person(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Person not found"
         )
+    
+    # Check permissions for non-admin users
+    if not current_user.is_admin:
+        accessible_groups = await get_user_accessible_groups(db, current_user.id, current_user.is_admin)
+        if accessible_groups:
+            person_groups_result = await db.execute(
+                select(Group.id).where(Group.person_id == person_id)
+            )
+            person_groups = {row[0] for row in person_groups_result.all()}
+            if not person_groups.intersection(accessible_groups):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You don't have permission to delete this person"
+                )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to delete this person"
+            )
     
     # Check if person has groups
     group_count_result = await db.execute(

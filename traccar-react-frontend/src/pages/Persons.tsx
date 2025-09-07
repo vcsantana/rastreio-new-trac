@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -50,11 +50,17 @@ const Persons: React.FC = () => {
     persons,
     loading,
     error,
+    fetchPersons,
     createPerson,
     updatePerson,
     deletePerson,
     togglePersonStatus,
   } = usePersons();
+
+  // Load persons on component mount
+  useEffect(() => {
+    fetchPersons();
+  }, [fetchPersons]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);

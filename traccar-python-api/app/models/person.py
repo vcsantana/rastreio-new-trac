@@ -46,4 +46,5 @@ class Person(Base):
     
     # Relationships
     groups = relationship("Group", back_populates="person")
+    devices = relationship("Device", back_populates="person")
 

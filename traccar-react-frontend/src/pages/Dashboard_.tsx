@@ -5,10 +5,10 @@ import {
   Card,
   CardContent,
   Typography,
+  Paper,
   useTheme,
   Alert,
   CircularProgress,
-  Button,
 } from '@mui/material';
 import {
   DeviceHub as DevicesIcon,
@@ -17,6 +17,9 @@ import {
   Timeline as TimelineIcon,
 } from '@mui/icons-material';
 import MapView from '../components/map/MapView';
+import { useWebSocket, usePositionUpdates, useDeviceStatusUpdates } from '../hooks/useWebSocket';
+import { useDevices } from '../hooks/useDevices';
+import { usePositions } from '../hooks/usePositions';
 
 interface StatCardProps {
   title: string;
@@ -71,114 +74,40 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
   );
 };
 
-const DashboardTest: React.FC = () => {
+const Dashboard: React.FC = () => {
   const theme = useTheme();
   const [selectedDeviceId, setSelectedDeviceId] = useState<number | undefined>();
-  const [devices, setDevices] = useState<any[]>([]);
-  const [positions, setPositions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  
+  // Real data hooks
+  const { devices, loading: devicesLoading, error: devicesError } = useDevices();
+  const { latestPositions, loading: positionsLoading, error: positionsError } = usePositions();
+  
+  // WebSocket hooks for real-time updates
+  const { connected, subscribe, unsubscribe } = useWebSocket();
+  const { positions: wsPositions, lastPosition } = usePositionUpdates();
+  const { deviceUpdates, lastDeviceUpdate } = useDeviceStatusUpdates();
 
-  // Login function
-  const handleLogin = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch('http://localhost:8000/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: 'test@traccar.com',
-          password: 'test123'
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Login failed: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      setToken(data.access_token);
-      localStorage.setItem('access_token', data.access_token);
-      
-      // Fetch data after login
-      await fetchData(data.access_token);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch data function
-  const fetchData = async (authToken: string) => {
-    try {
-      console.log('🔍 Starting fetchData with token:', authToken ? 'Token exists' : 'No token');
-      
-      const headers = {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'application/json',
-      };
-
-      console.log('📡 Fetching devices...');
-      // Fetch devices
-      const devicesResponse = await fetch('http://localhost:8000/api/devices', { headers });
-      console.log('📡 Devices response status:', devicesResponse.status);
-      if (!devicesResponse.ok) {
-        throw new Error(`Failed to fetch devices: ${devicesResponse.statusText}`);
-      }
-      const devicesData = await devicesResponse.json();
-      console.log('📱 Devices data:', devicesData.length, 'devices');
-
-      console.log('📍 Fetching positions...');
-      // Fetch positions
-      const positionsResponse = await fetch('http://localhost:8000/api/positions/latest', { headers });
-      console.log('📍 Positions response status:', positionsResponse.status);
-      if (!positionsResponse.ok) {
-        throw new Error(`Failed to fetch positions: ${positionsResponse.statusText}`);
-      }
-      const positionsData = await positionsResponse.json();
-      console.log('📍 Positions data:', positionsData.length, 'positions');
-
-      setDevices(devicesData);
-      setPositions(positionsData);
-      setError(null);
-      setLoading(false);
-      console.log('✅ Data fetch completed successfully - loading set to false');
-    } catch (err) {
-      console.error('❌ Error fetching data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch data');
-      setLoading(false);
-    }
-  };
-
-  // Check if already logged in
+  // Subscribe to real-time updates when component mounts
   useEffect(() => {
-    console.log('🚀 DashboardTest useEffect running...');
-    const storedToken = localStorage.getItem('access_token');
-    console.log('🔑 Stored token:', storedToken ? 'Token exists' : 'No token');
-    
-    if (storedToken) {
-      console.log('✅ Token found, setting token and fetching data');
-      setToken(storedToken);
-      setLoading(true); // Set loading to true before fetching
-      fetchData(storedToken);
-    } else {
-      console.log('❌ No token found, setting loading to false');
-      setLoading(false);
+    if (connected) {
+      subscribe('positions');
+      subscribe('devices');
+      subscribe('events');
+      
+      return () => {
+        unsubscribe('positions');
+        unsubscribe('devices');
+        unsubscribe('events');
+      };
     }
-  }, []);
+  }, [connected]); // Removed subscribe/unsubscribe from dependencies to prevent re-renders
 
-  // Transform data for map display
+  // Transform real data for map display (memoized to prevent re-renders)
   const mapDevices = useMemo(() => 
     devices.map(device => ({
       id: device.id,
       name: device.name,
-      status: device.status || 'unknown',
+      status: device.status,
       category: device.category || 'unknown',
       lastUpdate: device.last_update || new Date().toISOString(),
     })), 
@@ -186,7 +115,7 @@ const DashboardTest: React.FC = () => {
   );
 
   const mapPositions = useMemo(() => 
-    positions.map(position => ({
+    latestPositions.map(position => ({
       id: position.id,
       deviceId: position.device_id,
       latitude: position.latitude,
@@ -196,16 +125,16 @@ const DashboardTest: React.FC = () => {
       fixTime: position.device_time || position.server_time,
       attributes: position.attributes || {},
     })), 
-    [positions]
+    [latestPositions]
   );
 
-  // Calculate stats
+  // Calculate stats from real data (memoized to prevent re-renders)
   const stats = useMemo(() => {
     const onlineDevices = mapDevices.filter(d => d.status === 'online').length;
     const avgSpeed = mapPositions.length > 0 
       ? Math.round(mapPositions.reduce((sum, pos) => sum + (pos.speed || 0), 0) / mapPositions.length)
       : 0;
-    const totalDistance = mapPositions.reduce((sum, pos) => sum + (pos.speed || 0) * 0.5, 0);
+    const totalDistance = mapPositions.reduce((sum, pos) => sum + (pos.speed || 0) * 0.5, 0); // Mock calculation
 
     return [
       {
@@ -235,49 +164,8 @@ const DashboardTest: React.FC = () => {
     ];
   }, [mapDevices, mapPositions, theme.palette]);
 
-  // Debug logs
-  console.log('🎯 DashboardTest render - token:', !!token, 'loading:', loading, 'error:', error, 'devices:', devices.length, 'positions:', positions.length);
-
-  // Show login button if not authenticated
-  if (!token) {
-    console.log('🔐 No token, showing login button');
-    return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        flexDirection: 'column',
-        gap: 2,
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-      }}>
-        <Typography variant="h4" color="rgba(255, 255, 255, 0.9)" fontWeight="bold">
-          Traccar Dashboard
-        </Typography>
-        <Typography variant="h6" color="rgba(255, 255, 255, 0.7)">
-          Clique no botão para fazer login automaticamente
-        </Typography>
-        <Button
-          variant="contained"
-          size="large"
-          onClick={handleLogin}
-          disabled={loading}
-          sx={{ mt: 2 }}
-        >
-          {loading ? 'Fazendo Login...' : 'Login Automático'}
-        </Button>
-        {error && (
-          <Alert severity="error" sx={{ mt: 2, maxWidth: 400 }}>
-            {error}
-          </Alert>
-        )}
-      </Box>
-    );
-  }
-
   // Show loading state
-  if (loading) {
-    console.log('⏳ Loading state, showing spinner');
+  if (devicesLoading || positionsLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
         <CircularProgress size={60} />
@@ -289,25 +177,19 @@ const DashboardTest: React.FC = () => {
   }
 
   // Show error state
-  if (error) {
-    console.log('❌ Error state, showing error message');
+  if (devicesError || positionsError) {
     return (
       <Box>
         <Typography variant="h4" component="h1" gutterBottom>
           Dashboard
         </Typography>
         <Alert severity="error" sx={{ mb: 3 }}>
-          Error loading dashboard data: {error}
+          Error loading dashboard data: {devicesError || positionsError}
         </Alert>
-        <Button variant="contained" onClick={handleLogin}>
-          Tentar Novamente
-        </Button>
       </Box>
     );
   }
 
-  console.log('🗺️ Rendering map with', mapPositions.length, 'positions and', mapDevices.length, 'devices');
-  
   return (
     <Box sx={{ 
       position: 'relative', 
@@ -369,8 +251,70 @@ const DashboardTest: React.FC = () => {
           ))}
         </Grid>
       </Box>
+
+      {/* Recent Activity Panel - Right Side - COMMENTED OUT */}
+      {/* 
+      <Box sx={{ 
+        position: 'absolute', 
+        top: 200, 
+        right: 20, 
+        width: 300,
+        zIndex: 10 
+      }}>
+        <Paper sx={{ 
+          p: 1.5,
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(15px)',
+          border: '1px solid rgba(255, 255, 255, 0.3)',
+          boxShadow: '0 6px 24px rgba(0, 0, 0, 0.15)',
+          borderRadius: '8px'
+        }}>
+          <Typography variant="body1" gutterBottom fontWeight="bold" color="rgba(0, 0, 0, 0.87)">
+            Recent Activity
+          </Typography>
+          <Box sx={{ mt: 1.5, maxHeight: 200, overflowY: 'auto' }}>
+            {mapPositions.length > 0 ? (
+              <Box>
+                {mapPositions.slice(0, 4).map((position) => {
+                  const device = mapDevices.find(d => d.id === position.deviceId);
+                  return (
+                    <Box 
+                      key={position.id} 
+                      sx={{ 
+                        mb: 1.5, 
+                        p: 1.5, 
+                        border: '1px solid rgba(0, 0, 0, 0.1)', 
+                        borderRadius: '6px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                        '&:hover': {
+                          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                          transform: 'translateY(-1px)',
+                          transition: 'all 0.2s ease',
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                        }
+                      }}
+                    >
+                      <Typography variant="body2" fontWeight="bold" color="rgba(0, 0, 0, 0.87)" sx={{ fontSize: '0.8rem' }}>
+                        {device?.name || 'Unknown Device'}
+                      </Typography>
+                      <Typography variant="caption" color="rgba(0, 0, 0, 0.6)" sx={{ fontSize: '0.7rem' }}>
+                        {position.speed} km/h • {new Date(position.fixTime).toLocaleTimeString()}
+                      </Typography>
+                    </Box>
+                  );
+                })}
+              </Box>
+            ) : (
+              <Typography variant="body2" color="rgba(0, 0, 0, 0.6)" sx={{ fontSize: '0.8rem' }}>
+                No recent activity to display
+              </Typography>
+            )}
+          </Box>
+        </Paper>
+      </Box>
+      */}
     </Box>
   );
 };
 
-export default DashboardTest;
+export default Dashboard;

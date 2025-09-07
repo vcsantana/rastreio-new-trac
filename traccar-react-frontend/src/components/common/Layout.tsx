@@ -55,7 +55,7 @@ interface NavigationItem {
   icon: React.ReactElement;
 }
 
-const navigationItems: NavigationItem[] = [
+const allNavigationItems: NavigationItem[] = [
   {
     id: 'dashboard',
     label: 'Dashboard',
@@ -112,6 +112,9 @@ const navigationItems: NavigationItem[] = [
   },
 ];
 
+// Admin-only navigation items
+const adminOnlyItems = ['reports', 'logs', 'unknown-devices', 'users', 'settings'];
+
 export const Layout: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -126,6 +129,14 @@ export const Layout: React.FC = () => {
   const darkMode = useSelector((state: RootState) => state.ui.darkMode);
   const notifications = useSelector((state: RootState) => state.ui.notifications);
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  // Filter navigation items based on user permissions
+  const navigationItems = allNavigationItems.filter(item => {
+    if (adminOnlyItems.includes(item.id)) {
+      return user?.is_admin;
+    }
+    return true;
+  });
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -335,13 +346,17 @@ export const Layout: React.FC = () => {
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
-        <MenuItem onClick={() => handleNavigation('/settings')}>
-          <ListItemIcon>
-            <SettingsIcon fontSize="small" />
-          </ListItemIcon>
-          Settings
-        </MenuItem>
-        <Divider />
+        {user?.is_admin && (
+          <>
+            <MenuItem onClick={() => handleNavigation('/settings')}>
+              <ListItemIcon>
+                <SettingsIcon fontSize="small" />
+              </ListItemIcon>
+              Settings
+            </MenuItem>
+            <Divider />
+          </>
+        )}
         <MenuItem onClick={handleLogout}>
           <ListItemIcon>
             <LogoutIcon fontSize="small" />

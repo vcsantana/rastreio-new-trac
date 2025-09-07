@@ -1,19 +1,31 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Box } from '@mui/material';
 import maplibregl from 'maplibre-gl';
 import MapContainer from './MapContainer';
 import DeviceMarkers from './DeviceMarkers';
 import MapControls from './MapControls';
 import DeviceInfoCard from './DeviceInfoCard';
+import RoutePath from './RoutePath';
+import RouteControls from './RouteControls';
+import ReplayMarker from './ReplayMarker';
+import { useDeviceHistory } from '../../hooks/useDeviceHistory';
 
 interface Position {
   id: number;
-  deviceId: number;
+  device_id: number;
+  deviceId?: number; // For backward compatibility
+  server_time: string;
+  device_time?: string;
+  fix_time?: string;
   latitude: number;
   longitude: number;
   course?: number;
   speed?: number;
-  fixTime?: string;
+  address?: string;
+  altitude?: number;
+  accuracy?: number;
+  valid: boolean;
+  protocol: string;
   attributes?: Record<string, any>;
 }
 
@@ -31,6 +43,8 @@ interface MapViewProps {
   selectedDeviceId?: number;
   onDeviceSelect?: (deviceId: number) => void;
   style?: React.CSSProperties;
+  currentReplayPosition?: Position | null;
+  isReplaying?: boolean;
 }
 
 // Map style configurations
@@ -86,27 +100,84 @@ const MapView: React.FC<MapViewProps> = ({
   devices,
   selectedDeviceId,
   onDeviceSelect,
-  style = { width: '100%', height: '400px' }
+  style = { width: '100%', height: '400px' },
+  currentReplayPosition,
+  isReplaying = false
 }) => {
+  console.log('🗺️ MapView render - positions:', positions?.length || 0, 'devices:', devices?.length || 0, 'selectedDeviceId:', selectedDeviceId, 'isReplaying:', isReplaying);
+  console.log('🗺️ MapView props:', { positions, devices, selectedDeviceId, currentReplayPosition, isReplaying });
   const [map, setMap] = useState<maplibregl.Map | null>(null);
   const [mapStyle, setMapStyle] = useState<'streets' | 'satellite' | 'hybrid'>('streets');
   const [showTraffic, setShowTraffic] = useState(false);
+  
+  // Route controls state
+  const [showRoutes, setShowRoutes] = useState(false);
+  const [showSpeedColors, setShowSpeedColors] = useState(true);
+  const [routeColor, setRouteColor] = useState('#3b82f6');
+  const [routeWidth, setRouteWidth] = useState(3);
+  const [routeOpacity, setRouteOpacity] = useState(0.8);
+  const [fromTime, setFromTime] = useState<Date | null>(null);
+  const [toTime, setToTime] = useState<Date | null>(null);
+  
+  // Auto-enable routes during replay
+  useEffect(() => {
+    if (isReplaying && selectedDeviceId && positions.length > 1) {
+      setShowRoutes(true);
+    }
+  }, [isReplaying, selectedDeviceId, positions.length]);
+  
+  // Move camera to current replay position
+  useEffect(() => {
+    if (isReplaying && currentReplayPosition && map) {
+      console.log('🎬 Moving camera to replay position:', currentReplayPosition);
+      map.flyTo({
+        center: [currentReplayPosition.longitude, currentReplayPosition.latitude],
+        zoom: Math.max(map.getZoom(), 16),
+        duration: 800,
+        essential: true
+      });
+    }
+  }, [isReplaying, currentReplayPosition, map]);
 
   // Find selected device and its position (memoized to prevent re-renders)
   const selectedDevice = useMemo(() => 
-    devices.find(d => d.id === selectedDeviceId), 
+    devices?.find(d => d.id === selectedDeviceId), 
     [devices, selectedDeviceId]
   );
-  const selectedPosition = useMemo(() => 
-    positions.find(p => p.deviceId === selectedDeviceId), 
-    [positions, selectedDeviceId]
-  );
+  
+  // For replay mode, use currentReplayPosition, otherwise use latest position
+  const selectedPosition = useMemo(() => {
+    if (isReplaying && currentReplayPosition && currentReplayPosition.device_id === selectedDeviceId) {
+      return currentReplayPosition;
+    }
+    return positions?.find(p => (p.deviceId || p.device_id) === selectedDeviceId);
+  }, [positions, selectedDeviceId, isReplaying, currentReplayPosition]);
+
+  // Fetch device history for route tracking (skip if we're in replay mode and already have positions)
+  const { positions: historyPositions, refetch: refetchHistory } = useDeviceHistory({
+    deviceId: selectedDeviceId,
+    fromTime: fromTime || undefined,
+    toTime: toTime || undefined,
+    enabled: showRoutes && !!selectedDeviceId && !isReplaying
+  });
+  
+  // Use replay positions if available, otherwise use history positions
+  const routePositions = useMemo(() => {
+    if (isReplaying && positions.length > 0) {
+      // Convert positions to the format expected by RoutePath
+      return positions.map(pos => ({
+        ...pos,
+        deviceId: pos.device_id || pos.deviceId || 0,
+      }));
+    }
+    return historyPositions;
+  }, [isReplaying, positions, historyPositions]);
 
   const handleMapLoad = useCallback((mapInstance: maplibregl.Map) => {
     setMap(mapInstance);
     
     // Fit map to show all devices if we have positions
-    if (positions.length > 0) {
+    if (positions && positions.length > 0) {
       const bounds = new maplibregl.LngLatBounds();
       positions.forEach(position => {
         bounds.extend([position.longitude, position.latitude]);
@@ -140,7 +211,7 @@ const MapView: React.FC<MapViewProps> = ({
 
   const handleStyleChange = useCallback((newStyle: 'streets' | 'satellite' | 'hybrid') => {
     if (map && MAP_STYLES[newStyle as keyof typeof MAP_STYLES]) {
-      map.setStyle(MAP_STYLES[newStyle as keyof typeof MAP_STYLES]);
+      map.setStyle(MAP_STYLES[newStyle as keyof typeof MAP_STYLES] as maplibregl.StyleSpecification);
       setMapStyle(newStyle);
     }
   }, [map]);
@@ -157,6 +228,17 @@ const MapView: React.FC<MapViewProps> = ({
     }
   }, [onDeviceSelect]);
 
+  // Route control handlers
+  const handleApplyFilters = useCallback(() => {
+    refetchHistory();
+  }, [refetchHistory]);
+
+  const handleClearFilters = useCallback(() => {
+    setFromTime(null);
+    setToTime(null);
+    refetchHistory();
+  }, [refetchHistory]);
+
   return (
     <Box sx={{ position: 'relative', ...style }}>
       <MapContainer onMapLoad={handleMapLoad} style={style}>
@@ -166,10 +248,31 @@ const MapView: React.FC<MapViewProps> = ({
           onMarkerClick={handleMarkerClick}
           selectedDeviceId={selectedDeviceId}
         />
+        
+        {/* Route path for selected device */}
+        {showRoutes && selectedDeviceId && routePositions.length > 1 && (
+          <RoutePath
+            map={map}
+            positions={routePositions}
+            color={routeColor}
+            width={routeWidth}
+            opacity={routeOpacity}
+            showSpeedColors={showSpeedColors}
+          />
+        )}
+        
+        {/* Replay marker for current position */}
+        {isReplaying && currentReplayPosition && (
+          <ReplayMarker
+            map={map}
+            position={currentReplayPosition}
+            deviceName={selectedDevice?.name}
+          />
+        )}
       </MapContainer>
       
       <MapControls
-        map={map}
+        map={map || undefined}
         mapReady={!!map}
         mapStyle={mapStyle}
         onStyleChange={handleStyleChange}
@@ -177,10 +280,35 @@ const MapView: React.FC<MapViewProps> = ({
         onTrafficToggle={handleTrafficToggle}
       />
 
-      {selectedDevice && (
+      {/* Hide route controls during replay mode */}
+      {!isReplaying && (
+        <RouteControls
+          showRoutes={showRoutes}
+          onShowRoutesChange={setShowRoutes}
+          showSpeedColors={showSpeedColors}
+          onShowSpeedColorsChange={setShowSpeedColors}
+          routeColor={routeColor}
+          onRouteColorChange={setRouteColor}
+          routeWidth={routeWidth}
+          onRouteWidthChange={setRouteWidth}
+          routeOpacity={routeOpacity}
+          onRouteOpacityChange={setRouteOpacity}
+          fromTime={fromTime}
+          onFromTimeChange={setFromTime}
+          toTime={toTime}
+          onToTimeChange={setToTime}
+          onApplyFilters={handleApplyFilters}
+          onClearFilters={handleClearFilters}
+        />
+      )}
+
+      {selectedDevice && selectedPosition && (
         <DeviceInfoCard
           device={selectedDevice}
-          position={selectedPosition}
+          position={{
+            ...selectedPosition,
+            deviceId: selectedPosition.deviceId || selectedPosition.device_id || 0
+          }}
           onClose={handleCloseDeviceInfo}
         />
       )}

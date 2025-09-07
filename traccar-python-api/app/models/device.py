@@ -24,10 +24,12 @@ class Device(Base):
     model = Column(String(255))
     contact = Column(String(255))
     category = Column(String(50))
+    license_plate = Column(String(20))  # Placa do veículo
     disabled = Column(Boolean, default=False)
     
-    # Group relationship
+    # Relationships
     group_id = Column(Integer, ForeignKey("groups.id"))
+    person_id = Column(Integer, ForeignKey("persons.id"))  # Associação com pessoa
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -41,6 +43,7 @@ class Device(Base):
     events = relationship("Event", back_populates="device", cascade="all, delete-orphan")
     last_position = relationship("Position", foreign_keys=[position_id], post_update=True)
     group = relationship("Group", back_populates="devices")
+    person = relationship("Person", back_populates="devices")
     user_permissions = relationship(
         "User", 
         secondary="user_device_permissions", 

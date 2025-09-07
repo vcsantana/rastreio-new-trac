@@ -55,8 +55,25 @@ async def get_latest_positions(
     current_user: User = Depends(get_current_user)
 ):
     """Get the latest position for each device"""
-    # This is a simplified version - in production you'd use a more efficient query
-    devices_result = await db.execute(select(Device))
+    from app.api.groups import get_user_accessible_groups
+    
+    # Get accessible groups for the user
+    accessible_groups = await get_user_accessible_groups(db, current_user.id, current_user.is_admin)
+    
+    # Build query with group filtering
+    query = select(Device)
+    
+    # Filter by accessible groups (admin sees all, regular users see only their groups)
+    if not current_user.is_admin:
+        if not accessible_groups:
+            # User has no group permissions, return empty list
+            return []
+        query = query.where(
+            (Device.group_id.in_(accessible_groups)) |
+            (Device.group_id.is_(None))  # Include devices without group
+        )
+    
+    devices_result = await db.execute(query)
     devices = devices_result.scalars().all()
     
     latest_positions = []
@@ -72,6 +89,43 @@ async def get_latest_positions(
             latest_positions.append(PositionResponse.from_orm(position))
     
     return latest_positions
+
+@router.get("/device/{device_id}/history", response_model=List[PositionResponse])
+async def get_device_history(
+    device_id: int,
+    from_time: Optional[datetime] = Query(None, description="Start time filter"),
+    to_time: Optional[datetime] = Query(None, description="End time filter"),
+    limit: int = Query(1000, le=5000, description="Maximum number of positions"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get position history for a specific device"""
+    # Verify device exists
+    device_result = await db.execute(select(Device).where(Device.id == device_id))
+    device = device_result.scalar_one_or_none()
+    
+    if not device:
+        raise HTTPException(
+            status_code=404,
+            detail="Device not found"
+        )
+    
+    # Build query for device positions
+    query = select(Position).where(Position.device_id == device_id)
+    
+    # Apply time filters
+    if from_time:
+        query = query.where(Position.server_time >= from_time)
+    if to_time:
+        query = query.where(Position.server_time <= to_time)
+    
+    # Order by time ascending for route tracking
+    query = query.order_by(Position.server_time.asc()).limit(limit)
+    
+    result = await db.execute(query)
+    positions = result.scalars().all()
+    
+    return [PositionResponse.from_orm(position) for position in positions]
 
 @router.get("/{position_id}", response_model=PositionResponse)
 async def get_position(

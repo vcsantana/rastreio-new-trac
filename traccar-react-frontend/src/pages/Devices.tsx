@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -44,11 +44,17 @@ const Devices: React.FC = () => {
     devices,
     loading,
     error,
+    fetchDevices,
     createDevice,
     updateDevice,
     deleteDevice,
     toggleDeviceStatus,
   } = useDevices();
+
+  // Load devices on component mount
+  useEffect(() => {
+    fetchDevices();
+  }, [fetchDevices]);
 
   // Dialog states
   const [deviceDialogOpen, setDeviceDialogOpen] = useState(false);
@@ -63,6 +69,7 @@ const Devices: React.FC = () => {
   const [protocolFilter, setProtocolFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [groupFilter, setGroupFilter] = useState<string>('all');
+  const [personFilter, setPersonFilter] = useState<string>('all');
   const [filtersExpanded, setFiltersExpanded] = useState(false);
 
   // Get unique values for filter options
@@ -79,6 +86,11 @@ const Devices: React.FC = () => {
   const uniqueGroups = useMemo(() => {
     const groups = devices.map(d => d.group_name).filter(Boolean);
     return Array.from(new Set(groups));
+  }, [devices]);
+
+  const uniquePersons = useMemo(() => {
+    const persons = devices.map(d => d.person_name).filter(Boolean);
+    return Array.from(new Set(persons));
   }, [devices]);
 
   // Filter devices based on current filters
@@ -116,9 +128,14 @@ const Devices: React.FC = () => {
         return false;
       }
 
+      // Person filter
+      if (personFilter !== 'all' && device.person_name !== personFilter) {
+        return false;
+      }
+
       return true;
     });
-  }, [devices, searchTerm, statusFilter, protocolFilter, categoryFilter, groupFilter]);
+  }, [devices, searchTerm, statusFilter, protocolFilter, categoryFilter, groupFilter, personFilter]);
 
   // Clear all filters
   const clearFilters = () => {
@@ -127,11 +144,12 @@ const Devices: React.FC = () => {
     setProtocolFilter('all');
     setCategoryFilter('all');
     setGroupFilter('all');
+    setPersonFilter('all');
   };
 
   // Check if any filters are active
   const hasActiveFilters = searchTerm || statusFilter !== 'all' || protocolFilter !== 'all' || 
-                          categoryFilter !== 'all' || groupFilter !== 'all';
+                          categoryFilter !== 'all' || groupFilter !== 'all' || personFilter !== 'all';
 
   const getStatusColor = (status: string, disabled?: boolean) => {
     if (disabled) return 'default';
@@ -180,9 +198,11 @@ const Devices: React.FC = () => {
 
   const handleSaveDevice = async (data: any) => {
     if (dialogMode === 'create') {
-      return await createDevice(data);
+      const result = await createDevice(data);
+      return result !== null;
     } else if (selectedDevice) {
-      return await updateDevice(selectedDevice.id, data);
+      const result = await updateDevice(selectedDevice.id, data);
+      return result !== null;
     }
     return false;
   };
@@ -254,7 +274,8 @@ const Devices: React.FC = () => {
               statusFilter !== 'all' && 'Status',
               protocolFilter !== 'all' && 'Protocol',
               categoryFilter !== 'all' && 'Category',
-              groupFilter !== 'all' && 'Group'
+              groupFilter !== 'all' && 'Group',
+              personFilter !== 'all' && 'Person'
             ].filter(Boolean).length})`}
           </Button>
           {hasActiveFilters && (
@@ -378,6 +399,25 @@ const Devices: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
+
+            {/* Person Filter */}
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Person</InputLabel>
+                <Select
+                  value={personFilter}
+                  label="Person"
+                  onChange={(e) => setPersonFilter(e.target.value)}
+                >
+                  <MenuItem value="all">All Persons</MenuItem>
+                  {uniquePersons.map(person => (
+                    <MenuItem key={person} value={person}>
+                      {person}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
           </Grid>
         </Paper>
       </Collapse>
@@ -403,7 +443,9 @@ const Devices: React.FC = () => {
               <TableCell>Status</TableCell>
               <TableCell>Protocol</TableCell>
               <TableCell>Category</TableCell>
+              <TableCell>License Plate</TableCell>
               <TableCell>Group</TableCell>
+              <TableCell>Person</TableCell>
               <TableCell>Last Update</TableCell>
               <TableCell align="right">Actions</TableCell>
             </TableRow>
@@ -454,6 +496,17 @@ const Devices: React.FC = () => {
                   )}
                 </TableCell>
                 <TableCell>
+                  {device.license_plate ? (
+                    <Typography variant="body2" fontWeight="medium">
+                      {device.license_plate}
+                    </Typography>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      -
+                    </Typography>
+                  )}
+                </TableCell>
+                <TableCell>
                   {device.group_name ? (
                     <Chip
                       label={device.group_name}
@@ -464,6 +517,17 @@ const Devices: React.FC = () => {
                   ) : (
                     <Typography variant="body2" color="text.secondary">
                       No Group
+                    </Typography>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {device.person_name ? (
+                    <Typography variant="body2" fontWeight="medium">
+                      {device.person_name}
+                    </Typography>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No Person
                     </Typography>
                   )}
                 </TableCell>
