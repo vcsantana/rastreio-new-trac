@@ -20,7 +20,7 @@ python-multipart==0.0.9
 # Caching & Background Tasks
 redis==5.0.3
 celery==5.3.6
-aioredis==2.0.1
+redis[hiredis]==5.0.3
 
 # Data Validation & Serialization
 pydantic==2.6.4

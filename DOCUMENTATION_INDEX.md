@@ -6,7 +6,9 @@
 - **[README.md](./README.md)** - Guia completo de instalação e uso
 - **[QUICK_START.md](./QUICK_START.md)** - Guia de início rápido
 - **[CURRENT_STATUS.md](./CURRENT_STATUS.md)** - Status atual do projeto
-- **[API_COMPLETION_SUMMARY.md](./API_COMPLETION_SUMMARY.md)** - Resumo de conclusão da API (95% completo)
+- **[API_COMPLETION_SUMMARY.md](./API_COMPLETION_SUMMARY.md)** - Resumo de conclusão da API (98% completo)
+- **[REDIS_INTEGRATION_SUMMARY.md](./REDIS_INTEGRATION_SUMMARY.md)** - Resumo da integração Redis (100% completa)
+- **[CELERY_INTEGRATION_SUMMARY.md](./CELERY_INTEGRATION_SUMMARY.md)** - Resumo da integração Celery (100% completa)
 
 ### 🏗️ **Implementação e Arquitetura**
 - **[IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md)** - Guia detalhado de implementação

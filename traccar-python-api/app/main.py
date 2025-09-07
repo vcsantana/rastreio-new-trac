@@ -11,12 +11,23 @@ import uvicorn
 
 from app.config import settings
 from app.database import init_db
-from app.api import auth, devices, positions, websocket, events, geofences, server, protocols, reports, groups, persons, logs, unknown_devices, users
+from app.api import auth, devices, positions, websocket, events, geofences, server, protocols, reports, groups, persons, logs, unknown_devices, users, cache, tasks
 # Import models to ensure they are registered with SQLAlchemy
 from app.models import user, device, position, event, geofence, report, group, person, unknown_device
 from app.models import server as server_model
 # Import protocol server manager
 from app.protocols import start_protocol_servers, stop_protocol_servers
+# Import cache manager
+from app.core.cache import cache_manager
+# Import middleware
+from app.core.middleware import (
+    RateLimitMiddleware, 
+    SessionMiddleware, 
+    LoggingMiddleware, 
+    SecurityHeadersMiddleware
+)
+# Import Celery app
+from app.core.celery_app import celery_app
 
 # Configure structured logging
 structlog.configure(
@@ -53,6 +64,23 @@ async def lifespan(app: FastAPI):
     await init_db()
     logger.info("Database initialized")
     
+    # Initialize Redis cache
+    try:
+        await cache_manager.connect()
+        logger.info("Redis cache connected successfully")
+    except Exception as e:
+        logger.error("Failed to connect to Redis cache", error=str(e))
+        # Continue without cache if Redis is not available
+    
+    # Initialize Celery (background tasks)
+    try:
+        # Test Celery connection
+        celery_app.control.inspect().ping()
+        logger.info("Celery background tasks initialized successfully")
+    except Exception as e:
+        logger.error("Failed to initialize Celery", error=str(e))
+        # Continue without background tasks if Celery is not available
+    
     # Start protocol servers
     try:
         await start_protocol_servers()
@@ -70,6 +98,13 @@ async def lifespan(app: FastAPI):
         logger.info("Protocol servers stopped successfully")
     except Exception as e:
         logger.error("Error stopping protocol servers", error=str(e))
+    
+    # Disconnect from Redis
+    try:
+        await cache_manager.disconnect()
+        logger.info("Redis cache disconnected successfully")
+    except Exception as e:
+        logger.error("Error disconnecting from Redis cache", error=str(e))
     
     logger.info("Application stopped")
     logger.info("Traccar Python API shutdown complete")
@@ -100,6 +135,12 @@ app.add_middleware(
     allowed_hosts=settings.ALLOWED_HOSTS
 )
 
+# Add custom middleware
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(LoggingMiddleware)
+app.add_middleware(SessionMiddleware)
+app.add_middleware(RateLimitMiddleware)
+
 # Global exception handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
@@ -118,11 +159,34 @@ async def health_check():
     protocol_status = get_protocol_server_status()
     active_protocols = sum(1 for server in protocol_status.values() if server.get("running", False))
     
+    # Get cache status
+    cache_stats = await cache_manager.get_stats()
+    cache_connected = cache_manager.redis is not None
+    
+    # Get Celery status
+    celery_connected = False
+    celery_workers = 0
+    try:
+        inspect = celery_app.control.inspect()
+        active_tasks = inspect.active()
+        celery_connected = True
+        celery_workers = len(active_tasks) if active_tasks else 0
+    except Exception:
+        celery_connected = False
+    
     return {
         "status": "healthy",
         "version": settings.VERSION,
         "protocols_active": active_protocols,
-        "protocols": protocol_status
+        "protocols": protocol_status,
+        "cache": {
+            "connected": cache_connected,
+            "stats": cache_stats
+        },
+        "celery": {
+            "connected": celery_connected,
+            "workers": celery_workers
+        }
     }
 
 # Include API routers
@@ -140,6 +204,8 @@ app.include_router(logs.router, tags=["Logs"])
 app.include_router(unknown_devices.router, prefix="/api/unknown-devices", tags=["Unknown Devices"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(websocket.router, tags=["WebSocket"])
+app.include_router(cache.router, prefix="/api/cache", tags=["Cache Management"])
+app.include_router(tasks.router, prefix="/api/tasks", tags=["Background Tasks"])
 
 # Startup and shutdown events
 @app.on_event("startup")
