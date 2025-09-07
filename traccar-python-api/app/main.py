@@ -11,9 +11,9 @@ import uvicorn
 
 from app.config import settings
 from app.database import init_db
-from app.api import auth, devices, positions, websocket, events, geofences, server, protocols, reports, groups, persons, logs, unknown_devices, users, cache, tasks
+from app.api import auth, devices, positions, websocket, events, geofences, server, protocols, reports, groups, persons, logs, unknown_devices, users, cache, tasks, commands
 # Import models to ensure they are registered with SQLAlchemy
-from app.models import user, device, position, event, geofence, report, group, person, unknown_device
+from app.models import user, device, position, event, geofence, report, group, person, unknown_device, command
 from app.models import server as server_model
 # Import protocol server manager
 from app.protocols import start_protocol_servers, stop_protocol_servers
@@ -206,6 +206,7 @@ app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(websocket.router, tags=["WebSocket"])
 app.include_router(cache.router, prefix="/api/cache", tags=["Cache Management"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["Background Tasks"])
+app.include_router(commands.router, tags=["Commands"])
 
 # Startup and shutdown events
 @app.on_event("startup")

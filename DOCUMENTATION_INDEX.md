@@ -34,6 +34,7 @@
 ### 🌐 **Comunicação e Protocolos**
 - **[WEBSOCKET_IMPLEMENTATION_SUMMARY.md](./WEBSOCKET_IMPLEMENTATION_SUMMARY.md)** - Resumo da implementação WebSocket
 - **[OSMAND_PROTOCOL_IMPLEMENTATION.md](./OSMAND_PROTOCOL_IMPLEMENTATION.md)** - Implementação do protocolo OsmAnd
+- **[COMMAND_SYSTEM_DOCUMENTATION.md](./COMMAND_SYSTEM_DOCUMENTATION.md)** - Sistema de Comandos completo
 
 ## 🗄️ **Banco de Dados e Infraestrutura**
 - **[POSTGRESQL_ACCESS_GUIDE.md](./POSTGRESQL_ACCESS_GUIDE.md)** - Guia de acesso ao PostgreSQL
@@ -100,12 +101,14 @@
 - ✅ Protocolo OsmAnd implementado
 - ✅ Broadcast de eventos
 - ✅ Integração mobile
+- ✅ Sistema de Comandos completo
 
 ### 🗄️ **Banco de Dados**
-- ✅ PostgreSQL com 8 tabelas
+- ✅ PostgreSQL com 10 tabelas
 - ✅ Relacionamentos complexos
 - ✅ Migrações automáticas
 - ✅ Backup e restore
+- ✅ Sistema de Comandos (Command, CommandQueue)
 
 ## 🎯 **Funcionalidades Principais**
 
@@ -118,14 +121,15 @@
 - 📊 **Posições**: Rastreamento GPS
 - 📈 **Eventos**: 19 tipos de eventos
 - 🔍 **Filtros**: Busca avançada em todas as entidades
+- 🚀 **Comandos**: 28 tipos de comandos para dispositivos
 
 ### 🚀 **Próximas Funcionalidades**
 - 📊 **Relatórios**: Relatórios de uso e performance
 - 🗺️ **Geofencing**: Criação de zonas geográficas
-- 📱 **Comandos**: Envio de comandos para dispositivos
 - 📈 **Analytics**: Métricas e dashboards
 - 🔔 **Alertas**: Sistema de notificações
 - 📤 **Exportação**: Dados em CSV/Excel
+- 🎨 **Interface de Comandos**: Frontend para envio de comandos
 
 ## 📞 **Suporte e Contato**
 
@@ -139,6 +143,6 @@
 
 ---
 
-**Última Atualização**: 06 de Janeiro de 2025  
-**Versão**: 1.0.0  
-**Total de Documentos**: 21 arquivos de documentação
+**Última Atualização**: 07 de Janeiro de 2025  
+**Versão**: 1.1.0  
+**Total de Documentos**: 22 arquivos de documentação

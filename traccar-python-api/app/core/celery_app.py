@@ -16,7 +16,8 @@ celery_app = Celery(
         "app.tasks.position_tasks",
         "app.tasks.report_tasks", 
         "app.tasks.cleanup_tasks",
-        "app.tasks.notification_tasks"
+        "app.tasks.notification_tasks",
+        "app.tasks.command_tasks"
     ]
 )
 
@@ -28,6 +29,7 @@ celery_app.conf.update(
         "app.tasks.report_tasks.*": {"queue": "reports"},
         "app.tasks.cleanup_tasks.*": {"queue": "cleanup"},
         "app.tasks.notification_tasks.*": {"queue": "notifications"},
+        "app.tasks.command_tasks.*": {"queue": "commands"},
     },
     
     # Task execution
@@ -69,6 +71,18 @@ celery_app.conf.update(
         "process-position-batch": {
             "task": "app.tasks.position_tasks.process_position_batch",
             "schedule": 30.0,  # Every 30 seconds
+        },
+        "process-command-queue": {
+            "task": "app.tasks.command_tasks.process_command_queue",
+            "schedule": 10.0,  # Every 10 seconds
+        },
+        "check-command-timeouts": {
+            "task": "app.tasks.command_tasks.check_command_timeouts",
+            "schedule": 300.0,  # Every 5 minutes
+        },
+        "cleanup-expired-commands": {
+            "task": "app.tasks.command_tasks.cleanup_expired_commands",
+            "schedule": 3600.0,  # Every hour
         },
     },
 )

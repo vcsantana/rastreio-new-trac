@@ -41,6 +41,7 @@ class Device(Base):
     # Relationships
     positions = relationship("Position", back_populates="device", cascade="all, delete-orphan", foreign_keys="Position.device_id")
     events = relationship("Event", back_populates="device", cascade="all, delete-orphan")
+    commands = relationship("Command", back_populates="device", cascade="all, delete-orphan")
     last_position = relationship("Position", foreign_keys=[position_id], post_update=True)
     group = relationship("Group", back_populates="devices")
     person = relationship("Person", back_populates="devices")
