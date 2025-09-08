@@ -428,6 +428,11 @@ const UnknownDevices: React.FC = () => {
                     <Box>
                       <Typography variant="body2" fontWeight="medium">
                         {device.unique_id}
+                        {device.parsed_data?.real_device_id && device.parsed_data.real_device_id !== device.unique_id && (
+                          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                            ({device.parsed_data.real_device_id})
+                          </Typography>
+                        )}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         First seen: {formatDateTime(device.first_seen)}

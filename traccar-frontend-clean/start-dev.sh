@@ -35,3 +35,4 @@ echo ""
 
 # Iniciar o servidor de desenvolvimento
 npm run start
+

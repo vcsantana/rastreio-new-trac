@@ -418,3 +418,4 @@ npm audit
 ---
 
 **🎯 Desenvolvimento eficiente e organizado para o Traccar Frontend Clean!**
+

@@ -129,3 +129,4 @@ const DevicesPage = () => {
 };
 
 export default DevicesPage;
+

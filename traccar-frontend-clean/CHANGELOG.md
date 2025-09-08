@@ -172,3 +172,4 @@ npm run start
 **🎉 Traccar Frontend Clean v1.0.0 - Moderno, Responsivo e Completo!**
 
 **Desenvolvido com ❤️ usando React 19, Material-UI e FastAPI**
+

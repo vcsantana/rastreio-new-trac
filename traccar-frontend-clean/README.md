@@ -384,3 +384,4 @@ Este projeto mantém compatibilidade com a licença original do Traccar (Apache 
 **🎉 Frontend Traccar Clean - Moderno, Responsivo e Completo!**
 
 **Desenvolvido com ❤️ usando React 19, Material-UI e FastAPI**
+

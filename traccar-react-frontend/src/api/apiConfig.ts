@@ -26,7 +26,7 @@ export const API_ENDPOINTS = {
   POSITIONS_LATEST: `${API_BASE_URL}/api/positions/latest`,
   
   // Unknown Devices
-  UNKNOWN_DEVICES: `${API_BASE_URL}/api/unknown-devices`,
+  UNKNOWN_DEVICES: `${API_BASE_URL}/api/unknown-devices/`,
   
   // Users
   USERS: `${API_BASE_URL}/api/users`,
