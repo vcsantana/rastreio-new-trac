@@ -15,7 +15,7 @@
 - ✅ **Autenticação JWT** completa (login/register/logout)
 - ✅ **8 modelos de banco** (User, Device, Position, Event, Geofence, Server, Report, Person)
 - ✅ **WebSocket real-time** com broadcasting system
-- ✅ **Protocolo Suntech** - TCP/UDP na porta 5001 (ATIVO)
+- ✅ **Protocolo Suntech** - TCP/UDP na porta 5011 (ATIVO)
 - ✅ **Protocolo OsmAnd** - HTTP na porta 5055 (ATIVO)
 - ✅ **Sistema de eventos** com 19 tipos
 - ✅ **Geofencing** completo com 3 tipos de geometria

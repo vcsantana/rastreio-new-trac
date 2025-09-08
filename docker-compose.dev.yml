@@ -55,7 +55,7 @@ services:
       dockerfile: Dockerfile.dev
     ports:
       - "8000:8000"
-      - "5001:5001"  # Suntech protocol (TCP/UDP)
+      - "5011:5011"  # Suntech protocol (TCP/UDP)
       - "5055:5055"  # OsmAnd protocol (HTTP)
     environment:
       - DEBUG=true

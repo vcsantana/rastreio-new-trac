@@ -17,7 +17,7 @@ from app.models.position import Position
 from app.models.device import Device
 from app.schemas.position import PositionCreate
 from app.utils.geo_utils import is_valid_coordinates
-from app.utils.date_utils import parse_date_time
+from app.utils.date_utils import parse_date_time, parse_suntech_date_time
 
 logger = structlog.get_logger(__name__)
 
@@ -73,30 +73,6 @@ class SuntechProtocolHandler(BaseProtocolHandler):
         self.include_rpm = False
         self.include_temp = False
     
-    async def handle_message(self, data: bytes, client_info: Dict[str, Any]) -> Optional[List[PositionCreate]]:
-        """
-        Handle incoming Suntech protocol message
-        
-        Args:
-            data: Raw message data
-            client_info: Client connection information
-            
-        Returns:
-            List of position objects or None if message couldn't be parsed
-        """
-        try:
-            message = data.decode('utf-8').strip()
-            logger.debug("Received Suntech message", message=message, client=client_info)
-            
-            # Parse message based on format
-            if message.startswith("ST"):
-                return await self._parse_universal_message(message, client_info)
-            else:
-                return await self._parse_legacy_message(message, client_info)
-                
-        except Exception as e:
-            logger.error("Error parsing Suntech message", error=str(e), data=data.hex())
-            return None
     
     async def _parse_universal_message(self, message: str, client_info: Dict[str, Any]) -> Optional[List[PositionCreate]]:
         """Parse universal format message (ST format)"""
@@ -108,7 +84,7 @@ class SuntechProtocolHandler(BaseProtocolHandler):
                 return None
             
             index = 0
-            prefix = parts[index]  # ST600STT;...
+            prefix = parts[index]  # ST300STT
             index += 1
             
             # Extract device ID from prefix
@@ -119,21 +95,22 @@ class SuntechProtocolHandler(BaseProtocolHandler):
             
             device_identifier = device_id_match.group()
             
-            # Get or create device
+            # Extract real device ID from message (index 1)
+            real_device_id = parts[1] if len(parts) > 1 else device_identifier
+            
+            # Add real device ID to client info
+            client_info['real_device_id'] = real_device_id
+            
+            # Try to find existing device or create unknown device record
             device = await self._get_or_create_device(device_identifier, client_info)
             if not device:
                 return None
             
-            message_type = parts[index]
+            message_type = parts[index]  # This is actually the device ID in this format
             index += 1
             
-            if message_type in [self.MSG_LOCATION, self.MSG_EMERGENCY, self.MSG_ALERT]:
-                return await self._parse_location_message(parts, index, device, message_type)
-            elif message_type == self.MSG_HEARTBEAT:
-                return await self._parse_heartbeat_message(parts, index, device)
-            else:
-                logger.debug("Unsupported message type", type=message_type)
-                return None
+            # In this format, we assume it's a location message
+            return await self._parse_location_message(parts, index, device, self.MSG_LOCATION)
                 
         except Exception as e:
             logger.error("Error parsing universal message", error=str(e), message=message)
@@ -175,77 +152,79 @@ class SuntechProtocolHandler(BaseProtocolHandler):
         try:
             index = start_index
             
-            # Device ID
-            device_id = parts[index]
-            index += 1
+            # Based on the actual message format:
+            # ST300STT;907126119;04;1097B;20250908;12:44:33;33e530;-03.843813;-038.615475;000.013;000.00;11;1;26663840;14.07;000000;1;0019;295746;0.0;0;0;00000000000000;0
             
-            # Firmware version (optional)
-            if message_type != self.MSG_ALERT or self.protocol_type == 0:
-                firmware_version = parts[index]
-                index += 1
-            else:
-                firmware_version = None
+            # Device ID (907126119) - index 1
+            device_id = parts[1]
             
-            # Date and time
-            date_str = parts[index]
-            index += 1
-            time_str = parts[index]
-            index += 1
+            # Firmware version (04) - index 2
+            firmware_version = parts[2]
             
-            # Parse datetime
-            device_time = parse_date_time(f"{date_str}{time_str}", "%Y%m%d%H:%M:%S")
+            # Protocol type (1097B) - index 3
+            protocol_type = parts[3]
+            
+            # Date (20250908) - index 4
+            date_str = parts[4]
+            
+            # Time (12:44:33) - index 5
+            time_str = parts[5]
+            
+            # Parse datetime using Suntech-specific parser
+            datetime_str = f"{date_str}{time_str}"
+            device_time = parse_suntech_date_time(datetime_str)
             if not device_time:
-                logger.warning("Could not parse datetime", date=date_str, time=time_str)
+                logger.warning("Could not parse datetime", date=date_str, time=time_str, datetime_str=datetime_str)
                 return None
             
-            # Cell info (optional for protocol type 1)
-            if self.protocol_type == 1:
-                cell_info = parts[index]
-                index += 1
+            # Cell info (33e530) - index 6
+            cell_info = parts[6]
             
-            # Latitude and longitude
+            # Latitude (-03.843813) - index 7
             try:
-                latitude = float(parts[index])
-                index += 1
-                longitude = float(parts[index])
-                index += 1
+                latitude = float(parts[7])
             except (ValueError, IndexError):
-                logger.warning("Invalid coordinates", lat_part=parts[index-1] if index > 0 else None)
+                logger.warning("Invalid latitude", lat_part=parts[7] if len(parts) > 7 else None)
+                return None
+            
+            # Longitude (-038.615475) - index 8
+            try:
+                longitude = float(parts[8])
+            except (ValueError, IndexError):
+                logger.warning("Invalid longitude", lon_part=parts[8] if len(parts) > 8 else None)
                 return None
             
             if not is_valid_coordinates(latitude, longitude):
                 logger.warning("Invalid coordinate values", lat=latitude, lon=longitude)
                 return None
             
-            # Speed (km/h)
+            # Speed (000.013) - index 9
             try:
-                speed = float(parts[index])
-                index += 1
+                speed = float(parts[9])
                 # Convert km/h to knots
                 speed_knots = speed * 0.539957
             except (ValueError, IndexError):
                 speed_knots = 0.0
-                index += 1
             
-            # Course
+            # Course (000.00) - index 10
             try:
-                course = float(parts[index])
-                index += 1
+                course = float(parts[10])
             except (ValueError, IndexError):
                 course = 0.0
-                index += 1
             
-            # GPS validity
+            # GPS validity (11) - index 11 - this seems to be a status code, not boolean
             try:
-                valid = parts[index] == "1"
-                index += 1
+                gps_status = parts[11]
+                # In this format, we'll assume GPS is valid if we have coordinates
+                valid = True
             except IndexError:
                 valid = True
             
-            # Odometer (optional for protocol type 1)
+            # Additional fields that we can parse if available
             odometer = None
-            if self.protocol_type == 1 and index < len(parts):
+            if index < len(parts):
                 try:
+                    # Odometer might be in one of the remaining fields
                     odometer = int(parts[index])
                     index += 1
                 except (ValueError, IndexError):
@@ -263,12 +242,13 @@ class SuntechProtocolHandler(BaseProtocolHandler):
                 'speed': speed_knots,
                 'course': course,
                 'valid': valid,
-                'attributes': {}
+                'attributes': {
+                    'version_fw': firmware_version,
+                    'protocol_type': protocol_type,
+                    'cell_info': cell_info,
+                    'gps_status': gps_status
+                }
             }
-            
-            # Add optional attributes
-            if firmware_version:
-                position_data['attributes']['version_fw'] = firmware_version
             
             if odometer is not None:
                 position_data['attributes']['odometer'] = odometer
@@ -278,9 +258,6 @@ class SuntechProtocolHandler(BaseProtocolHandler):
                 position_data['attributes']['alarm'] = 'general'
             elif message_type == self.MSG_ALERT:
                 position_data['attributes']['alarm'] = 'general'
-            
-            # Parse additional attributes if available
-            await self._parse_additional_attributes(parts, index, position_data, device)
             
             return [PositionCreate(**position_data)]
             
@@ -389,24 +366,37 @@ class SuntechProtocolHandler(BaseProtocolHandler):
         """
         try:
             message_str = data.decode('utf-8', errors='ignore').strip()
+            # Remove control characters like \r, \n, \t
+            message_str = ''.join(char for char in message_str if ord(char) >= 32 or char in '\n\r\t')
+            message_str = message_str.strip()
             if not message_str:
                 return None
             
-            # Try to parse as universal format first
-            parsed_data = await self._parse_universal_message(message_str)
-            if not parsed_data:
-                # Try legacy format
-                parsed_data = await self._parse_legacy_message(message_str)
+            # Convert client_address to client_info format
+            client_info = {
+                'host': client_address[0],
+                'port': client_address[1],
+                'raw_data': message_str
+            }
             
-            if not parsed_data:
+            # Try to parse as universal format first
+            positions = await self._parse_universal_message(message_str, client_info)
+            if not positions:
+                # Try legacy format
+                positions = await self._parse_legacy_message(message_str, client_info)
+            
+            if not positions or len(positions) == 0:
                 return None
+            
+            # Get the first position for the protocol message
+            position = positions[0]
             
             from app.protocols.base import ProtocolMessage
             return ProtocolMessage(
-                device_id=parsed_data.get('device_id', ''),
-                message_type=parsed_data.get('message_type', 'unknown'),
-                data=parsed_data,
-                timestamp=parsed_data.get('timestamp', datetime.utcnow()),
+                device_id=position.device_id,
+                message_type='location',
+                data=position.model_dump(),
+                timestamp=position.device_time or datetime.utcnow(),
                 raw_data=data,
                 valid=True
             )
@@ -539,3 +529,134 @@ class SuntechProtocolHandler(BaseProtocolHandler):
             logger.error("Error creating events from Suntech message", error=str(e))
         
         return events
+    
+    async def _get_or_create_device(self, device_identifier: str, client_info: Dict[str, Any]):
+        """Get existing device or create unknown device record."""
+        try:
+            from app.database import AsyncSessionLocal
+            from app.models.unknown_device import UnknownDevice
+            from app.models.device import Device
+            from sqlalchemy import select
+            from datetime import datetime
+            
+            async with AsyncSessionLocal() as db:
+                # First, check if device is already registered
+                result = await db.execute(
+                    select(Device).where(Device.unique_id == device_identifier)
+                )
+                existing_device = result.scalar_one_or_none()
+                
+                if existing_device:
+                    logger.info("Found existing registered device", unique_id=device_identifier, device_id=existing_device.id)
+                    return existing_device
+                
+                # Check if unknown device already exists
+                result = await db.execute(
+                    select(UnknownDevice).where(
+                        UnknownDevice.unique_id == device_identifier,
+                        UnknownDevice.protocol == self.PROTOCOL_NAME
+                    )
+                )
+                existing_unknown = result.scalar_one_or_none()
+                
+                if existing_unknown:
+                    # Update existing unknown device record
+                    existing_unknown.last_seen = datetime.utcnow()
+                    existing_unknown.connection_count += 1
+                    existing_unknown.client_address = f"{client_info.get('host', 'unknown')}:{client_info.get('port', 'unknown')}"
+                    existing_unknown.raw_data = client_info.get('raw_data', '')
+                    
+                    # Store real device ID in parsed_data
+                    import json
+                    parsed_data = {}
+                    if existing_unknown.parsed_data:
+                        try:
+                            parsed_data = json.loads(existing_unknown.parsed_data)
+                        except:
+                            parsed_data = {}
+                    parsed_data['real_device_id'] = client_info.get('real_device_id', device_identifier)
+                    existing_unknown.parsed_data = json.dumps(parsed_data)
+                    
+                    await db.commit()
+                    logger.info("Updated existing unknown device", unique_id=device_identifier, connection_count=existing_unknown.connection_count)
+                    
+                    # Broadcast unknown device update via WebSocket
+                    try:
+                        from app.services.websocket_service import websocket_service
+                        await websocket_service.broadcast_unknown_device_update({
+                            'id': existing_unknown.id,
+                            'unique_id': existing_unknown.unique_id,
+                            'protocol': existing_unknown.protocol,
+                            'port': existing_unknown.port,
+                            'protocol_type': existing_unknown.protocol_type,
+                            'client_address': existing_unknown.client_address,
+                            'connection_count': existing_unknown.connection_count,
+                            'last_seen': existing_unknown.last_seen.isoformat(),
+                            'is_registered': existing_unknown.is_registered
+                        })
+                    except Exception as e:
+                        logger.error("Failed to broadcast unknown device update", error=str(e))
+                    
+                    # Create a mock device object for compatibility
+                    device = type('Device', (), {
+                        'id': existing_unknown.id,  # Use unknown device ID
+                        'unique_id': device_identifier,
+                        'name': f'Suntech Device {device_identifier}',
+                        'is_unknown': True
+                    })()
+                    return device
+                else:
+                    # Create new unknown device record
+                    import json
+                    parsed_data = {
+                        'real_device_id': client_info.get('real_device_id', device_identifier)
+                    }
+                    
+                    unknown_device = UnknownDevice(
+                        unique_id=device_identifier,
+                        protocol=self.PROTOCOL_NAME,
+                        port=client_info.get('port', 5011),
+                        protocol_type="tcp",  # Suntech uses TCP
+                        client_address=f"{client_info.get('host', 'unknown')}:{client_info.get('port', 'unknown')}",
+                        connection_count=1,
+                        raw_data=client_info.get('raw_data', ''),
+                        parsed_data=json.dumps(parsed_data),
+                        first_seen=datetime.utcnow(),
+                        last_seen=datetime.utcnow()
+                    )
+                    db.add(unknown_device)
+                    await db.commit()
+                    await db.refresh(unknown_device)
+                    
+                    logger.info("Created new unknown device record", unique_id=device_identifier, protocol=self.PROTOCOL_NAME)
+                    
+                    # Broadcast unknown device update via WebSocket
+                    try:
+                        from app.services.websocket_service import websocket_service
+                        await websocket_service.broadcast_unknown_device_update({
+                            'id': unknown_device.id,
+                            'unique_id': unknown_device.unique_id,
+                            'protocol': unknown_device.protocol,
+                            'port': unknown_device.port,
+                            'protocol_type': unknown_device.protocol_type,
+                            'client_address': unknown_device.client_address,
+                            'connection_count': unknown_device.connection_count,
+                            'first_seen': unknown_device.first_seen.isoformat(),
+                            'last_seen': unknown_device.last_seen.isoformat(),
+                            'is_registered': unknown_device.is_registered
+                        })
+                    except Exception as e:
+                        logger.error("Failed to broadcast unknown device update", error=str(e))
+                    
+                    # Create a mock device object for compatibility
+                    device = type('Device', (), {
+                        'id': existing_unknown.id,  # Use unknown device ID
+                        'unique_id': device_identifier,
+                        'name': f'Suntech Device {device_identifier}',
+                        'is_unknown': True
+                    })()
+                    return device
+                
+        except Exception as e:
+            logger.error("Error in _get_or_create_device", error=str(e), device_id=device_identifier)
+            return None

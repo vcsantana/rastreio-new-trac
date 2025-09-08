@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     PROTOCOL_SERVERS: dict = Field(default={
         "suntech": {
             "enabled": True,
-            "port": 5001,
+            "port": 5011,
             "protocols": ["tcp", "udp"]  # Support both TCP and UDP
         },
         "gt06": {

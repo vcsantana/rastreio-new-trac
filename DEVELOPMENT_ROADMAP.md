@@ -71,7 +71,7 @@ This document outlines the complete migration strategy from the existing Java-ba
 #### Protocol Implementation
 - [x] Base protocol handler architecture ✅
 - [x] Suntech protocol implementation ✅
-- [x] **TCP/UDP server implementation with asyncio** ✅ **ATIVO na porta 5001**
+- [x] **TCP/UDP server implementation with asyncio** ✅ **ATIVO na porta 5011**
 - [x] **Protocol factory and registration system** ✅ **FUNCIONANDO**
 - [ ] GT06 protocol implementation (next priority)
 - [ ] H02 protocol implementation
@@ -128,7 +128,7 @@ This document outlines the complete migration strategy from the existing Java-ba
 - [x] OsmAnd protocol implementation (542 lines) ✅
 - [x] Base protocol handler architecture ✅
 - [x] Protocol message dataclass ✅
-- [x] **TCP/UDP server activation** ✅ **ATIVO na porta 5001**
+- [x] **TCP/UDP server activation** ✅ **ATIVO na porta 5011**
 - [x] **HTTP server activation** ✅ **ATIVO na porta 5055**
 - [x] **Real GPS data reception** ✅ **FUNCIONANDO**
 - [x] **Protocol server manager activation** ✅ **FUNCIONANDO**
@@ -444,7 +444,7 @@ traccar-react-frontend/
 - **Frontend**: 100% stable with optimized performance
 - **Backend**: 75+ API endpoints fully functional
 - **WebSocket**: Real-time broadcasting working perfectly
-- **TCP Server**: Active on port 5001 for Suntech protocol
+- **TCP Server**: Active on port 5011 for Suntech protocol
 - **HTTP Server**: Active on port 5055 for OsmAnd protocol
 - **Map**: Stable rendering without flickering
 - **Overall**: 95% complete - Production-ready system

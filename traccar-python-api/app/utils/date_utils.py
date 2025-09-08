@@ -97,6 +97,45 @@ def parse_gps_date_time(date_str: str, time_str: str) -> Optional[datetime]:
         return None
 
 
+def parse_suntech_date_time(datetime_str: str) -> Optional[datetime]:
+    """
+    Parse Suntech date and time format (YYYYMMDDHH:MM:SS).
+    
+    Args:
+        datetime_str: Combined date and time string in YYYYMMDDHH:MM:SS format
+        
+    Returns:
+        datetime object or None if parsing fails
+    """
+    if not datetime_str:
+        return None
+    
+    try:
+        # Handle format like "2025090812:44:33"
+        if len(datetime_str) >= 15 and ':' in datetime_str:
+            # Extract date part (YYYYMMDD)
+            date_part = datetime_str[:8]
+            # Extract time part (HH:MM:SS)
+            time_part = datetime_str[8:]
+            
+            year = int(date_part[:4])
+            month = int(date_part[4:6])
+            day = int(date_part[6:8])
+            
+            # Parse time part
+            time_parts = time_part.split(':')
+            if len(time_parts) == 3:
+                hour = int(time_parts[0])
+                minute = int(time_parts[1])
+                second = int(time_parts[2])
+                
+                return datetime(year, month, day, hour, minute, second, tzinfo=timezone.utc)
+        
+        return None
+    except (ValueError, IndexError):
+        return None
+
+
 def format_iso_datetime(dt: datetime) -> str:
     """
     Format datetime to ISO string.

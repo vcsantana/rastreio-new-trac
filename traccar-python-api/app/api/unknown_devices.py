@@ -66,7 +66,38 @@ async def get_unknown_devices(
     result = await db.execute(query)
     unknown_devices = result.scalars().all()
     
-    return unknown_devices
+    # Convert parsed_data from JSON string to object for each device
+    import json
+    result_devices = []
+    for device in unknown_devices:
+        # Create a copy of the device data
+        device_dict = {
+            'id': device.id,
+            'unique_id': device.unique_id,
+            'protocol': device.protocol,
+            'port': device.port,
+            'protocol_type': device.protocol_type,
+            'client_address': device.client_address,
+            'first_seen': device.first_seen,
+            'last_seen': device.last_seen,
+            'connection_count': device.connection_count,
+            'raw_data': device.raw_data,
+            'is_registered': device.is_registered,
+            'registered_device_id': device.registered_device_id,
+            'notes': device.notes,
+            'parsed_data': {}
+        }
+        
+        # Parse the JSON data
+        if device.parsed_data:
+            try:
+                device_dict['parsed_data'] = json.loads(device.parsed_data)
+            except:
+                device_dict['parsed_data'] = {}
+        
+        result_devices.append(device_dict)
+    
+    return result_devices
 
 
 @router.get("/stats")

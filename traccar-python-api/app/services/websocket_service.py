@@ -85,6 +85,20 @@ class WebSocketService:
             logger.error(f"Failed to broadcast device status update: {e}")
     
     @staticmethod
+    async def broadcast_unknown_device_update(unknown_device_data: Dict[str, Any]):
+        """Broadcast unknown device update to WebSocket subscribers."""
+        try:
+            await manager.broadcast_to_subscribers({
+                "type": "unknown_device",
+                "data": unknown_device_data,
+                "timestamp": datetime.utcnow().isoformat()
+            }, "unknown_devices")
+            logger.info(f"Broadcasted unknown device update for device {unknown_device_data.get('unique_id')}")
+            
+        except Exception as e:
+            logger.error(f"Failed to broadcast unknown device update: {e}")
+    
+    @staticmethod
     async def broadcast_system_notification(message: str, notification_type: str = "info", user_id: Optional[int] = None):
         """Broadcast system notification to WebSocket subscribers."""
         try:

@@ -240,3 +240,4 @@ class CommandQueue(Base):
             "updated_at": self.updated_at.isoformat(),
             "is_ready_for_execution": self.is_ready_for_execution
         }
+

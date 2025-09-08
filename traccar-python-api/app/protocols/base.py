@@ -108,7 +108,7 @@ class ProtocolServer:
     Base protocol server for TCP/UDP connections.
     """
     
-    def __init__(self, protocol_handler: BaseProtocolHandler, host: str = "0.0.0.0", port: int = 5001):
+    def __init__(self, protocol_handler: BaseProtocolHandler, host: str = "0.0.0.0", port: int = 5011):
         self.protocol_handler = protocol_handler
         self.host = host
         self.port = port

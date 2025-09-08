@@ -221,7 +221,7 @@ npm run dev
 
 ### 🔄 **Recursos Parciais (Estrutura pronta)**
 - ✅ **WebSocket real-time** - **FUNCIONANDO** com performance otimizada
-- ✅ **Servidor TCP/UDP** - **ATIVO** na porta 5001 para protocolo Suntech
+- ✅ **Servidor TCP/UDP** - **ATIVO** na porta 5011 para protocolo Suntech
 - ✅ **Redis caching** - **FUNCIONANDO** com integração completa
 - ✅ **Background tasks** - **FUNCIONANDO** com Celery ativo
 - ✅ **Sistema de Comandos** - **100% FUNCIONANDO** com 20+ endpoints ativos
@@ -300,7 +300,7 @@ npm run dev
 - **Persons**: Pessoa física/jurídica com validação de documentos
 - **Comandos**: 28 tipos de comandos com sistema completo
 - **WebSocket**: **FUNCIONANDO** com performance otimizada
-- **Servidor TCP**: **ATIVO** na porta 5001 (Suntech)
+- **Servidor TCP**: **ATIVO** na porta 5011 (Suntech)
 - **Servidor HTTP**: **ATIVO** na porta 5055 (OsmAnd)
 - **Celery**: **FUNCIONANDO** com 3 tarefas periódicas
 - **Redis**: **FUNCIONANDO** com cache e filas
@@ -333,7 +333,7 @@ O sistema está **99% completo e totalmente funcional** para:
 - ✅ Interface responsiva **otimizada**
 - ✅ Documentação Swagger
 - ✅ **WebSocket real-time funcionando**
-- ✅ **Servidor TCP ativo** (porta 5001 - Suntech)
+- ✅ **Servidor TCP ativo** (porta 5011 - Suntech)
 - ✅ **Servidor HTTP ativo** (porta 5055 - OsmAnd)
 - ✅ **Performance otimizada** (sem piscar)
 - ✅ **Protocolos funcionando** (Suntech + OsmAnd)

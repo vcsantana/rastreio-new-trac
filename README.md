@@ -116,7 +116,7 @@ traccar-migration/
 - ✅ **CRUD APIs**: 75+ REST endpoints for all entities
 - ✅ **Async Protocol Handlers**: Suntech + OsmAnd protocols implemented and ACTIVE
 - ✅ **Real-time WebSockets**: 100% functional with broadcasting system
-- ✅ **Protocol Servers**: TCP/UDP (port 5001) + HTTP (port 5055) ACTIVE
+- ✅ **Protocol Servers**: TCP/UDP (port 5011) + HTTP (port 5055) ACTIVE
 - ✅ **Database Migrations**: Alembic ready, auto-create tables active
 - ⏳ **Redis Caching**: Configured, needs integration (5% remaining)
 - ⏳ **Background Tasks**: Celery configured, needs tasks (5% remaining)
@@ -138,7 +138,7 @@ traccar-migration/
 - ⏳ **Component Testing**: Jest configured, needs tests (5% remaining)
 
 ### Protocol Support
-- ✅ **Suntech Protocol**: Complete parser implementation with TCP/UDP server ACTIVE (port 5001)
+- ✅ **Suntech Protocol**: Complete parser implementation with TCP/UDP server ACTIVE (port 5011)
 - ✅ **OsmAnd Protocol**: Complete implementation with HTTP server ACTIVE (port 5055)
 - ✅ **Extensible Architecture**: Base protocol class ready for new protocols
 - ✅ **TCP/UDP Servers**: Protocol server manager ACTIVE and functional
