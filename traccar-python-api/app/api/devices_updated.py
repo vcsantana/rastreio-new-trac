@@ -1,7 +1,7 @@
 """
 Device management API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List
@@ -14,9 +14,6 @@ from app.models.person import Person
 from app.api.groups import get_user_accessible_groups
 from app.schemas.device import DeviceCreate, DeviceUpdate, DeviceResponse
 from app.schemas.device_accumulators import DeviceAccumulatorsUpdate, DeviceAccumulatorsResponse
-from app.schemas.device_image import DeviceImageResponse, DeviceImageUpload
-from app.models.device_image import DeviceImage
-from app.services.image_service import image_service
 from app.api.auth import get_current_user
 from app.services.websocket_service import websocket_service
 
@@ -411,110 +408,3 @@ async def update_device_accumulators(
         total_distance_km=device.get_total_distance_km(),
         hours_formatted=device.get_hours_formatted()
     )
-
-@router.post("/{device_id}/image", response_model=DeviceImageUpload)
-async def upload_device_image(
-    device_id: int,
-    file: UploadFile = File(...),
-    description: str = Form(None),
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Upload an image for a device"""
-    # Check if device exists
-    result = await db.execute(select(Device).where(Device.id == device_id))
-    device = result.scalar_one_or_none()
-    
-    if not device:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Device not found"
-        )
-    
-    # Check permissions for non-admin users
-    if not current_user.is_admin:
-        accessible_groups = await get_user_accessible_groups(db, current_user.id, current_user.is_admin)
-        if device.group_id and device.group_id not in accessible_groups:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have permission to modify this device"
-            )
-    
-    # Save image
-    device_image = await image_service.save_image(file, device_id, description)
-    db.add(device_image)
-    await db.commit()
-    await db.refresh(device_image)
-    
-    # Return response
-    return DeviceImageUpload(
-        id=device_image.id,
-        device_id=device_image.device_id,
-        filename=device_image.filename,
-        original_filename=device_image.original_filename,
-        content_type=device_image.content_type,
-        file_size=device_image.file_size,
-        url=image_service.get_image_url(device_image),
-        created_at=device_image.created_at
-    )
-
-@router.get("/{device_id}/images", response_model=List[DeviceImageResponse])
-async def get_device_images(
-    device_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Get all images for a device"""
-    # Check if device exists
-    result = await db.execute(select(Device).where(Device.id == device_id))
-    device = result.scalar_one_or_none()
-    
-    if not device:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Device not found"
-        )
-    
-    # Check permissions for non-admin users
-    if not current_user.is_admin:
-        accessible_groups = await get_user_accessible_groups(db, current_user.id, current_user.is_admin)
-        if device.group_id and device.group_id not in accessible_groups:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have permission to view this device"
-            )
-    
-    # Get images
-    images = await image_service.get_device_images(db, device_id)
-    return images
-
-@router.delete("/{device_id}/images/{image_id}")
-async def delete_device_image(
-    device_id: int,
-    image_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Delete a device image"""
-    # Get image
-    device_image = await image_service.get_device_image(db, device_id, image_id)
-    
-    if not device_image:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Image not found"
-        )
-    
-    # Check permissions for non-admin users
-    if not current_user.is_admin:
-        accessible_groups = await get_user_accessible_groups(db, current_user.id, current_user.is_admin)
-        if device_image.device.group_id and device_image.device.group_id not in accessible_groups:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have permission to delete this image"
-            )
-    
-    # Delete image
-    await image_service.delete_image(db, device_image)
-    
-    return {"message": "Image deleted successfully"}

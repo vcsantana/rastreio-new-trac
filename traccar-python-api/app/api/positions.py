@@ -14,6 +14,8 @@ from app.models.device import Device
 from app.schemas.position import PositionResponse, PositionCreate
 from app.api.auth import get_current_user
 from app.services.websocket_service import websocket_service
+from app.services.position_cache import get_position_cache_service
+from app.constants.position_keys import PositionKeys
 
 router = APIRouter()
 
@@ -150,7 +152,15 @@ async def get_position(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get a specific position"""
+    """Get a specific position with cache support"""
+    cache_service = await get_position_cache_service()
+    
+    # Try to get from cache first
+    cached_position = await cache_service.get_cached_position(position_id)
+    if cached_position:
+        return PositionResponse(**cached_position)
+    
+    # If not in cache, get from database
     result = await db.execute(select(Position).where(Position.id == position_id))
     position = result.scalar_one_or_none()
     
@@ -159,6 +169,9 @@ async def get_position(
             status_code=404,
             detail="Position not found"
         )
+    
+    # Cache the position for future requests
+    await cache_service.set_cached_position(position)
     
     return PositionResponse.from_orm(position)
 
@@ -170,6 +183,8 @@ async def create_position(
     current_user: User = Depends(get_current_user)
 ):
     """Create a new position and broadcast via WebSocket"""
+    cache_service = await get_position_cache_service()
+    
     # Verify device exists and user has access
     device_result = await db.execute(select(Device).where(Device.id == position_data.device_id))
     device = device_result.scalar_one_or_none()
@@ -186,7 +201,60 @@ async def create_position(
     await db.commit()
     await db.refresh(position)
     
+    # Cache the new position
+    await cache_service.set_cached_position(position)
+    
+    # Invalidate device cache since we have new position data
+    await cache_service.invalidate_device_cache(device.id)
+    
     # Broadcast position update via WebSocket
     await websocket_service.broadcast_position_update(position, device)
     
     return PositionResponse.from_orm(position)
+
+@router.get("/cache/stats")
+async def get_cache_stats(
+    current_user: User = Depends(get_current_user)
+):
+    """Get position cache statistics (admin only)"""
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required"
+        )
+    
+    cache_service = await get_position_cache_service()
+    stats = await cache_service.get_cache_stats()
+    
+    return {
+        "cache_stats": stats,
+        "position_keys": PositionKeys.get_all_keys(),
+        "gps_keys": PositionKeys.get_gps_keys(),
+        "network_keys": PositionKeys.get_network_keys(),
+        "fuel_keys": PositionKeys.get_fuel_keys(),
+        "battery_keys": PositionKeys.get_battery_keys(),
+        "odometer_keys": PositionKeys.get_odometer_keys(),
+        "control_keys": PositionKeys.get_control_keys(),
+        "alarm_keys": PositionKeys.get_alarm_keys(),
+        "geofence_keys": PositionKeys.get_geofence_keys(),
+        "sensor_keys": PositionKeys.get_sensor_keys(),
+        "can_keys": PositionKeys.get_can_keys(),
+        "maintenance_keys": PositionKeys.get_maintenance_keys(),
+        "behavior_keys": PositionKeys.get_behavior_keys()
+    }
+
+@router.post("/cache/clear")
+async def clear_cache(
+    current_user: User = Depends(get_current_user)
+):
+    """Clear position cache (admin only)"""
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required"
+        )
+    
+    cache_service = await get_position_cache_service()
+    await cache_service.clear_all_cache()
+    
+    return {"message": "Position cache cleared successfully"}
