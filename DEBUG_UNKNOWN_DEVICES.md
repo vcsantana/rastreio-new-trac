@@ -1,9 +1,18 @@
-# 🐛 Debug: Problema na Página de Dispositivos Desconhecidos
+# 🐛 Debug: Sistema de Dispositivos Desconhecidos
 
-## Problema Reportado
-- ❌ Página `http://localhost:3000/unknown-devices` não exibe dispositivos
+## Status Atual
+- ✅ Página `http://localhost:3000/unknown-devices` funcionando
 - ✅ API funcionando (testado via curl)
-- ✅ Dados de teste criados (dispositivo TEST123)
+- ✅ Sistema de logs funcionando para dispositivos desconhecidos
+- ✅ Posições sendo salvas corretamente no banco de dados
+- ✅ Real Device ID sendo exibido na interface
+
+## Problemas Resolvidos
+- ✅ **Posições não sendo salvas**: Corrigido parsing de latitude/longitude no método `_parse_legacy_message`
+- ✅ **Real Device ID não aparecendo**: Corrigido passagem de `client_info` para `_parse_location_message`
+- ✅ **Erro de validação Pydantic**: Corrigido campos obrigatórios no `PositionCreate`
+- ✅ **Salvamento contínuo**: Corrigido para dispositivos desconhecidos ativos (não apenas na criação/linkagem)
+- ✅ **Suporte a prefixos numéricos**: Adicionado suporte para prefixos como `47733387` além do formato ST
 
 ## 🔍 Como Debuggar
 
@@ -70,6 +79,25 @@ Received unknown devices data: [{...}]
 ### **Problema 5: Filtros ativos**
 **Sintomas**: Dados carregam mas são filtrados
 **Solução**: Limpar filtros ou verificar lógica de filtro
+
+## 🔄 Fluxo de Registro de Dispositivos
+
+### **Fluxo Completo**
+1. **Dispositivo Conecta**: Rastreador envia dados para porta 5011 (Suntech) ou 5055 (OsmAnd)
+2. **Criação Automática**: Sistema cria registro em `unknown_devices` automaticamente
+3. **Salvamento Contínuo de Posições**: Sistema salva posições continuamente com `unknown_device_id` preenchido
+4. **Exibição**: Dispositivo aparece na lista de dispositivos desconhecidos
+5. **Logs**: Posições aparecem na página de logs (`http://localhost:3000/logs`) em tempo real
+6. **Registro**: Usuário pode:
+   - **Criar Novo Dispositivo**: Botão verde (+) - Cria um novo dispositivo registrado
+   - **Linkar a Dispositivo Existente**: Botão azul (🔗) - Associa a um dispositivo já existente
+7. **Atualização**: Dispositivo desconhecido é marcado como `is_registered = true`
+
+### **Ações Disponíveis**
+- **👁️ Ver Detalhes**: Visualizar informações do dispositivo desconhecido
+- **➕ Criar Dispositivo**: Criar um novo dispositivo registrado a partir do desconhecido
+- **🔗 Linkar Dispositivo**: Associar a um dispositivo já existente
+- **🗑️ Deletar**: Remover o dispositivo desconhecido
 
 ## 📋 Checklist de Teste
 

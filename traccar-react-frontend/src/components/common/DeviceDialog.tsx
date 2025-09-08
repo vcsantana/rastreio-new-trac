@@ -29,6 +29,7 @@ interface DeviceDialogProps {
 
 const PROTOCOL_OPTIONS = [
   { value: 'suntech', label: 'Suntech' },
+  { value: 'osmand', label: 'OsmAnd' },
   { value: 'gt06', label: 'GT06' },
   { value: 'h02', label: 'H02' },
   { value: 'meiligao', label: 'Meiligao' },

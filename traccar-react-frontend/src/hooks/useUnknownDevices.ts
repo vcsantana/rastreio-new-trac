@@ -215,6 +215,43 @@ export const useUnknownDevices = () => {
     }
   }, [isAuthenticated, token]);
 
+  const createDeviceFromUnknown = useCallback(async (unknownDeviceId: number, deviceData: any) => {
+    if (!isAuthenticated || !token) {
+      throw new Error('Authentication required to create device from unknown device.');
+    }
+
+    try {
+      const response = await fetch(`${API_ENDPOINTS.UNKNOWN_DEVICES}/${unknownDeviceId}/create-device`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify(deviceData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to create device from unknown device: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      // Update the device in the local state
+      setUnknownDevices(prev => 
+        prev.map(device => 
+          device.id === unknownDeviceId 
+            ? { ...device, is_registered: true, registered_device_id: result.device_id }
+            : device
+        )
+      );
+
+      return result;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create device from unknown device');
+      throw err;
+    }
+  }, [isAuthenticated, token]);
+
   useEffect(() => {
     fetchUnknownDevices();
     fetchStats();
@@ -230,5 +267,6 @@ export const useUnknownDevices = () => {
     updateUnknownDevice,
     deleteUnknownDevice,
     registerUnknownDevice,
+    createDeviceFromUnknown,
   };
 };

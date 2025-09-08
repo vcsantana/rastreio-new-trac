@@ -10,7 +10,8 @@ class Position(Base):
     __tablename__ = "positions"
     
     id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(Integer, ForeignKey("devices.id"), nullable=False, index=True)
+    device_id = Column(Integer, ForeignKey("devices.id"), nullable=True, index=True)
+    unknown_device_id = Column(Integer, ForeignKey("unknown_devices.id"), nullable=True, index=True)
     protocol = Column(String(50), nullable=False)
     
     # Time information

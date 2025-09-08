@@ -60,7 +60,7 @@ class TraccarProtocolServer:
         handler = self.protocol_handlers[protocol_name]
         
         # Check if this is an HTTP-based protocol
-        if protocol_name == "osmand":
+        if protocol_type.lower() == "http" or protocol_name == "osmand":
             server = HTTPProtocolServer(handler, host, port)
             self.http_servers[protocol_name] = server
             await server.start()
@@ -110,6 +110,11 @@ class TraccarProtocolServer:
                     
                     for protocol_type in protocols:
                         await self.start_protocol_server(protocol_name, host, port, protocol_type)
+                elif 'protocol' in protocol_config:
+                    # Single protocol with explicit type
+                    protocol_type = protocol_config['protocol']
+                    port = protocol_config.get('port', self._get_default_port(protocol_name))
+                    await self.start_protocol_server(protocol_name, host, port, protocol_type)
                 else:
                     # Single protocol (backward compatibility)
                     await self.start_protocol_server(protocol_name, host)
@@ -187,21 +192,132 @@ class TraccarProtocolServerWrapper(ProtocolServer):
             return
         
         try:
-            # For now, just log the message - full database integration would be implemented later
             self.logger.info(f"Received message for device: {message.device_id}")
             
             # Create position if available
             position_data = await self.protocol_handler.create_position(message)
             if position_data:
                 self.logger.info(f"Position created for device {message.device_id}: {position_data}")
+                
+                # Save position to database
+                await self._save_position_to_database(position_data, message)
             
             # Create events if available
             events_data = await self.protocol_handler.create_events(message)
             for event_data in events_data:
                 self.logger.info(f"Event created for device {message.device_id}: {event_data}")
+                
+                # Save event to database
+                await self._save_event_to_database(event_data, message)
             
         except Exception as e:
             self.logger.error(f"Error handling parsed message: {e}")
+    
+    async def _save_position_to_database(self, position_data: Dict[str, Any], message: ProtocolMessage):
+        """Save position to database."""
+        try:
+            from app.database import AsyncSessionLocal
+            from app.models.position import Position
+            from app.models.unknown_device import UnknownDevice
+            from sqlalchemy import select
+            
+            async with AsyncSessionLocal() as db:
+                # Check if this is an unknown device by looking up the device_id in the message data
+                # The message.device_id is actually the unknown device's database ID
+                result = await db.execute(
+                    select(UnknownDevice).where(UnknownDevice.id == message.device_id)
+                )
+                unknown_device = result.scalar_one_or_none()
+                
+                if unknown_device:
+                    # Create position for unknown device
+                    import json
+                    attributes = position_data.get('attributes', {})
+                    if isinstance(attributes, dict):
+                        attributes = json.dumps(attributes)
+                    
+                    position = Position(
+                        device_id=None,  # No registered device
+                        unknown_device_id=unknown_device.id,  # Use unknown device ID
+                        protocol=position_data.get('protocol', self.protocol_handler.PROTOCOL_NAME),
+                        server_time=position_data.get('server_time'),
+                        device_time=position_data.get('device_time'),
+                        fix_time=position_data.get('fix_time'),
+                        latitude=position_data.get('latitude'),
+                        longitude=position_data.get('longitude'),
+                        altitude=position_data.get('altitude', 0.0),
+                        speed=position_data.get('speed', 0.0),
+                        course=position_data.get('course', 0.0),
+                        address=position_data.get('address'),
+                        accuracy=position_data.get('accuracy'),
+                        valid=position_data.get('valid', True),
+                        attributes=attributes
+                    )
+                    
+                    db.add(position)
+                    await db.commit()
+                    await db.refresh(position)
+                    
+                    self.logger.info(f"Position saved for unknown device {message.device_id}: ID {position.id}")
+                    
+                    # Broadcast position update via WebSocket
+                    try:
+                        from app.services.websocket_service import websocket_service
+                        await websocket_service.broadcast_position_update(position, None)
+                    except Exception as e:
+                        self.logger.error(f"Failed to broadcast position update: {e}")
+                
+        except Exception as e:
+            self.logger.error(f"Error saving position to database: {e}")
+    
+    async def _save_event_to_database(self, event_data: Dict[str, Any], message: ProtocolMessage):
+        """Save event to database."""
+        try:
+            from app.database import AsyncSessionLocal
+            from app.models.event import Event
+            from app.models.unknown_device import UnknownDevice
+            from sqlalchemy import select
+            
+            async with AsyncSessionLocal() as db:
+                # Check if this is an unknown device by looking up the device_id in the message data
+                # The message.device_id is actually the unknown device's database ID
+                result = await db.execute(
+                    select(UnknownDevice).where(UnknownDevice.id == message.device_id)
+                )
+                unknown_device = result.scalar_one_or_none()
+                
+                if unknown_device:
+                    # Create event for unknown device
+                    import json
+                    event_attributes = event_data.get('attributes', {})
+                    if isinstance(event_attributes, dict):
+                        event_attributes = json.dumps(event_attributes)
+                    
+                    event = Event(
+                        device_id=unknown_device.id,  # Use unknown device ID
+                        type=event_data.get('type'),
+                        event_time=event_data.get('timestamp'),
+                        server_time=event_data.get('server_time'),
+                        position_id=event_data.get('position_id'),
+                        geofence_id=event_data.get('geofence_id'),
+                        attributes=event_attributes
+                    )
+                    
+                    db.add(event)
+                    await db.commit()
+                    await db.refresh(event)
+                    
+                    self.logger.info(f"Event saved for unknown device {message.device_id}: {event.type}")
+                    
+                    # Broadcast event update via WebSocket
+                    try:
+                        from app.services.websocket_service import websocket_service
+                        await websocket_service.broadcast_event_update(event, None)
+                    except Exception as e:
+                        self.logger.error(f"Failed to broadcast event update: {e}")
+                
+        except Exception as e:
+            self.logger.error(f"Error saving event to database: {e}")
     
     async def _create_position(self, db: Session, device: Device, position_data: Dict[str, Any], message: ProtocolMessage):
         """Create position in database and broadcast via WebSocket."""

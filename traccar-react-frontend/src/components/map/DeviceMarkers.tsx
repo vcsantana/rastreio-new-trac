@@ -5,6 +5,7 @@ interface Position {
   id: number;
   deviceId?: number;
   device_id?: number;
+  unknown_device_id?: number;
   latitude: number;
   longitude: number;
   course?: number;
@@ -51,10 +52,12 @@ const DeviceMarkers: React.FC<DeviceMarkersProps> = ({
   // Create device lookup map (memoized)
   const deviceMap = useMemo(() => {
     if (!devices) return {};
-    return devices.reduce((acc, device) => {
+    const map = devices.reduce((acc, device) => {
       acc[device.id] = device;
       return acc;
     }, {} as Record<number, Device>);
+    console.log('🔍 DeviceMap created:', map);
+    return map;
   }, [devices]);
 
   useEffect(() => {
@@ -144,7 +147,7 @@ const DeviceMarkers: React.FC<DeviceMarkersProps> = ({
         if (features.length > 0) {
           const feature = features[0];
           const deviceId = feature.properties?.deviceId;
-          const position = positions?.find(p => (p.deviceId || p.device_id) === deviceId);
+          const position = positions?.find(p => (p.deviceId || p.device_id || p.unknown_device_id) === deviceId);
           
           if (deviceId && position && onMarkerClick) {
             onMarkerClick(deviceId, position);
@@ -234,13 +237,42 @@ const DeviceMarkers: React.FC<DeviceMarkersProps> = ({
       const source = map.getSource(sourceId) as maplibregl.GeoJSONSource;
       if (!source) return;
 
+    console.log('🔍 Filtering positions:', positions);
+    console.log('🔍 Available devices in map:', deviceMap);
+    
     const features = positions
       .filter(position => {
-        const deviceId = position.deviceId || position.device_id;
-        return deviceId && deviceMap[deviceId];
+        const deviceId = position.deviceId || position.device_id || position.unknown_device_id;
+        const hasDevice = deviceId && deviceMap[deviceId];
+        const hasValidCoordinates = position.latitude >= -90 && position.latitude <= 90 && 
+                                   position.longitude >= -180 && position.longitude <= 180;
+        
+        if (!hasDevice) {
+          console.log('🔍 Position filtered out - no device found:', {
+            positionId: position.id,
+            deviceId: position.deviceId,
+            device_id: position.device_id,
+            unknown_device_id: position.unknown_device_id,
+            availableDevices: Object.keys(deviceMap)
+          });
+        } else if (!hasValidCoordinates) {
+          console.log('🔍 Position filtered out - invalid coordinates:', {
+            positionId: position.id,
+            latitude: position.latitude,
+            longitude: position.longitude
+          });
+        } else {
+          console.log('✅ Position included:', {
+            positionId: position.id,
+            deviceId: deviceId,
+            device: deviceMap[deviceId],
+            coordinates: [position.latitude, position.longitude]
+          });
+        }
+        return hasDevice && hasValidCoordinates;
       })
       .map(position => {
-        const deviceId = position.deviceId || position.device_id;
+        const deviceId = position.deviceId || position.device_id || position.unknown_device_id;
         const device = deviceMap[deviceId!];
         return {
           type: 'Feature' as const,
@@ -260,6 +292,7 @@ const DeviceMarkers: React.FC<DeviceMarkersProps> = ({
         };
       });
 
+      console.log('🗺️ Setting map features:', features);
       source.setData({
         type: 'FeatureCollection',
         features

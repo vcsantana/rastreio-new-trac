@@ -37,6 +37,7 @@ import {
   Visibility as ViewIcon,
   Delete as DeleteIcon,
   Link as LinkIcon,
+  Add as AddIcon,
   NetworkCheck as NetworkIcon,
   Schedule as ScheduleIcon,
   LocationOn as LocationIcon,
@@ -55,6 +56,7 @@ const UnknownDevices: React.FC = () => {
     updateUnknownDevice,
     deleteUnknownDevice,
     registerUnknownDevice,
+    createDeviceFromUnknown,
   } = useUnknownDevices();
 
   // Debug logs
@@ -76,9 +78,20 @@ const UnknownDevices: React.FC = () => {
   // Dialog states
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState<UnknownDevice | null>(null);
   const [selectedDeviceToLink, setSelectedDeviceToLink] = useState<number | null>(null);
+  const [createDeviceData, setCreateDeviceData] = useState({
+    name: '',
+    model: '',
+    contact: '',
+    category: 'other',
+    phone: '',
+    license_plate: '',
+    group_id: undefined as number | undefined,
+    person_id: undefined as number | undefined,
+  });
 
   // Get unique values for filter options
   const uniqueProtocols = useMemo(() => {
@@ -147,6 +160,21 @@ const UnknownDevices: React.FC = () => {
     setLinkDialogOpen(true);
   };
 
+  const handleCreateDevice = (device: UnknownDevice) => {
+    setSelectedDevice(device);
+    setCreateDeviceData({
+      name: `Device ${device.unique_id}`,
+      model: '',
+      contact: '',
+      category: 'other',
+      phone: '',
+      license_plate: '',
+      group_id: undefined,
+      person_id: undefined,
+    });
+    setCreateDialogOpen(true);
+  };
+
   const handleDeleteDevice = (device: UnknownDevice) => {
     setSelectedDevice(device);
     setConfirmDialogOpen(true);
@@ -173,6 +201,28 @@ const UnknownDevices: React.FC = () => {
         setSelectedDeviceToLink(null);
       } catch (error) {
         console.error('Failed to link unknown device:', error);
+      }
+    }
+  };
+
+  const handleConfirmCreate = async () => {
+    if (selectedDevice) {
+      try {
+        await createDeviceFromUnknown(selectedDevice.id, createDeviceData);
+        setCreateDialogOpen(false);
+        setSelectedDevice(null);
+        setCreateDeviceData({
+          name: '',
+          model: '',
+          contact: '',
+          category: 'other',
+          phone: '',
+          license_plate: '',
+          group_id: undefined,
+          person_id: undefined,
+        });
+      } catch (error) {
+        console.error('Failed to create device from unknown device:', error);
       }
     }
   };
@@ -494,15 +544,26 @@ const UnknownDevices: React.FC = () => {
                   </Tooltip>
                   
                   {!device.is_registered && (
-                    <Tooltip title="Link to Device">
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => handleLinkDevice(device)}
-                      >
-                        <LinkIcon />
-                      </IconButton>
-                    </Tooltip>
+                    <>
+                      <Tooltip title="Create Device">
+                        <IconButton
+                          size="small"
+                          color="success"
+                          onClick={() => handleCreateDevice(device)}
+                        >
+                          <AddIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Link to Device">
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => handleLinkDevice(device)}
+                        >
+                          <LinkIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </>
                   )}
                   
                   <Tooltip title="Delete">
@@ -619,11 +680,17 @@ const UnknownDevices: React.FC = () => {
                   label="Select Device"
                   onChange={(e) => setSelectedDeviceToLink(Number(e.target.value))}
                 >
-                  {devices.map(device => (
-                    <MenuItem key={device.id} value={device.id}>
-                      {device.name} ({device.unique_id})
+                  {devices.length > 0 ? (
+                    devices.map(device => (
+                      <MenuItem key={device.id} value={device.id}>
+                        {device.name} ({device.unique_id})
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem disabled>
+                      No devices available
                     </MenuItem>
-                  ))}
+                  )}
                 </Select>
               </FormControl>
             </Box>
@@ -637,6 +704,93 @@ const UnknownDevices: React.FC = () => {
             disabled={!selectedDeviceToLink}
           >
             Link Device
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Create Device Dialog */}
+      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Create Device from Unknown Device</DialogTitle>
+        <DialogContent>
+          {selectedDevice && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" gutterBottom>
+                Create a new device from unknown device <strong>{selectedDevice.unique_id}</strong>:
+              </Typography>
+              <Grid container spacing={2} sx={{ mt: 1 }}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Device Name"
+                    value={createDeviceData.name}
+                    onChange={(e) => setCreateDeviceData(prev => ({ ...prev, name: e.target.value }))}
+                    required
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Model"
+                    value={createDeviceData.model}
+                    onChange={(e) => setCreateDeviceData(prev => ({ ...prev, model: e.target.value }))}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Contact"
+                    value={createDeviceData.contact}
+                    onChange={(e) => setCreateDeviceData(prev => ({ ...prev, contact: e.target.value }))}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Category</InputLabel>
+                    <Select
+                      value={createDeviceData.category}
+                      label="Category"
+                      onChange={(e) => setCreateDeviceData(prev => ({ ...prev, category: e.target.value }))}
+                    >
+                      <MenuItem value="car">Car</MenuItem>
+                      <MenuItem value="truck">Truck</MenuItem>
+                      <MenuItem value="motorcycle">Motorcycle</MenuItem>
+                      <MenuItem value="van">Van</MenuItem>
+                      <MenuItem value="bus">Bus</MenuItem>
+                      <MenuItem value="boat">Boat</MenuItem>
+                      <MenuItem value="iphone">iPhone</MenuItem>
+                      <MenuItem value="android">Android</MenuItem>
+                      <MenuItem value="other">Other</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Phone"
+                    value={createDeviceData.phone}
+                    onChange={(e) => setCreateDeviceData(prev => ({ ...prev, phone: e.target.value }))}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="License Plate"
+                    value={createDeviceData.license_plate}
+                    onChange={(e) => setCreateDeviceData(prev => ({ ...prev, license_plate: e.target.value }))}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+          <Button 
+            onClick={handleConfirmCreate} 
+            variant="contained"
+            disabled={!createDeviceData.name}
+          >
+            Create Device
           </Button>
         </DialogActions>
       </Dialog>

@@ -43,6 +43,11 @@ class Settings(BaseSettings):
             "port": 5011,
             "protocols": ["tcp", "udp"]  # Support both TCP and UDP
         },
+        "osmand": {
+            "enabled": True,
+            "port": 5055,
+            "protocol": "http"
+        },
         "gt06": {
             "enabled": True,
             "port": 5002,

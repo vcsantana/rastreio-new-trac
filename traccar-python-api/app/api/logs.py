@@ -33,47 +33,70 @@ async def get_position_logs(
     Get position logs with filtering options
     """
     try:
-        # Build query
-        query = select(Position).join(Device, Position.device_id == Device.id)
+        # Build query - include both registered devices and unknown devices
+        from app.models.unknown_device import UnknownDevice
+        
+        # Query for positions from registered devices
+        registered_query = select(Position).join(Device, Position.device_id == Device.id)
+        
+        # Query for positions from unknown devices
+        unknown_query = select(Position).join(UnknownDevice, Position.unknown_device_id == UnknownDevice.id)
         
         # Apply filters
-        filters = []
-        
-        # Time filter
         since = datetime.utcnow() - timedelta(hours=hours)
-        filters.append(Position.server_time >= since)
         
-        # Device filter
+        # Apply filters to registered devices query
+        registered_filters = [Position.server_time >= since]
         if device_id:
-            filters.append(Position.device_id == device_id)
-        
-        # Protocol filter
+            registered_filters.append(Position.device_id == device_id)
         if protocol:
-            filters.append(Position.protocol == protocol)
+            registered_filters.append(Position.protocol == protocol)
         
-        if filters:
-            query = query.where(and_(*filters))
+        registered_query = registered_query.where(and_(*registered_filters))
+        registered_query = registered_query.order_by(desc(Position.server_time)).limit(limit // 2)
         
-        # Order by time descending and limit
-        query = query.order_by(desc(Position.server_time)).limit(limit)
+        # Apply filters to unknown devices query
+        unknown_filters = [Position.server_time >= since]
+        if protocol:
+            unknown_filters.append(Position.protocol == protocol)
         
-        # Execute query
-        result = await db.execute(query)
-        positions = result.scalars().all()
+        unknown_query = unknown_query.where(and_(*unknown_filters))
+        unknown_query = unknown_query.order_by(desc(Position.server_time)).limit(limit // 2)
+        
+        # Execute both queries
+        registered_result = await db.execute(registered_query)
+        registered_positions = registered_result.scalars().all()
+        
+        unknown_result = await db.execute(unknown_query)
+        unknown_positions = unknown_result.scalars().all()
+        
+        # Combine and sort all positions
+        all_positions = list(registered_positions) + list(unknown_positions)
+        all_positions.sort(key=lambda p: p.server_time, reverse=True)
+        all_positions = all_positions[:limit]
         
         # Convert to log entries
         log_entries = []
-        for position in positions:
-            # Get device name separately to avoid lazy loading issues
-            device_result = await db.execute(
-                select(Device.name).where(Device.id == position.device_id)
-            )
-            device_name = device_result.scalar_one_or_none() or "Unknown"
+        for position in all_positions:
+            if position.device_id:
+                # Registered device
+                device_result = await db.execute(
+                    select(Device.name).where(Device.id == position.device_id)
+                )
+                device_name = device_result.scalar_one_or_none() or "Unknown"
+                device_id = position.device_id
+            else:
+                # Unknown device
+                unknown_device_result = await db.execute(
+                    select(UnknownDevice.unique_id).where(UnknownDevice.id == position.unknown_device_id)
+                )
+                device_name = unknown_device_result.scalar_one_or_none() or "Unknown Device"
+                device_id = position.unknown_device_id
             
             log_entries.append(LogEntry(
                 id=str(position.id),
                 timestamp=position.server_time,
-                device_id=position.device_id,
+                device_id=device_id,
                 device_name=device_name,
                 protocol=position.protocol,
                 type="position",

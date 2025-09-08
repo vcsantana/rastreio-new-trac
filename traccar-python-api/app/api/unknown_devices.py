@@ -245,11 +245,18 @@ async def delete_unknown_device(
 @router.post("/{unknown_device_id}/register")
 async def register_unknown_device(
     unknown_device_id: int,
-    device_id: int,
+    request_data: dict,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Mark an unknown device as registered and link it to a device"""
+    
+    device_id = request_data.get('device_id')
+    if not device_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="device_id is required in request body"
+        )
     
     # Check if unknown device exists
     result = await db.execute(
@@ -285,6 +292,88 @@ async def register_unknown_device(
         "message": f"Unknown device {unknown_device.unique_id} linked to device {device.name}",
         "unknown_device_id": unknown_device_id,
         "device_id": device_id
+    }
+
+
+@router.post("/{unknown_device_id}/create-device")
+async def create_device_from_unknown(
+    unknown_device_id: int,
+    device_data: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new device from an unknown device"""
+    
+    # Check if unknown device exists
+    result = await db.execute(
+        select(UnknownDevice).where(UnknownDevice.id == unknown_device_id)
+    )
+    unknown_device = result.scalar_one_or_none()
+    
+    if not unknown_device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Unknown device not found"
+        )
+    
+    if unknown_device.is_registered:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unknown device is already registered"
+        )
+    
+    # Create new device
+    from app.models.device import Device
+    from app.schemas.device import DeviceCreate
+    
+    # Use unknown device data as base
+    device_create = DeviceCreate(
+        name=device_data.get('name', f"Device {unknown_device.unique_id}"),
+        unique_id=unknown_device.unique_id,
+        model=device_data.get('model', ''),
+        contact=device_data.get('contact', ''),
+        category=device_data.get('category', 'other'),
+        phone=device_data.get('phone', ''),
+        license_plate=device_data.get('license_plate', ''),
+        group_id=device_data.get('group_id'),
+        person_id=device_data.get('person_id')
+    )
+    
+    # Create the device
+    new_device = Device(
+        name=device_create.name,
+        unique_id=device_create.unique_id,
+        protocol=unknown_device.protocol,  # Use protocol from unknown device
+        model=device_create.model,
+        contact=device_create.contact,
+        category=device_create.category,
+        phone=device_create.phone,
+        license_plate=device_create.license_plate,
+        group_id=device_create.group_id,
+        person_id=device_create.person_id
+    )
+    
+    db.add(new_device)
+    await db.commit()
+    await db.refresh(new_device)
+    
+    # Mark unknown device as registered and link to new device
+    unknown_device.is_registered = True
+    unknown_device.registered_device_id = new_device.id
+    
+    await db.commit()
+    
+    return {
+        "message": f"Device created from unknown device {unknown_device.unique_id}",
+        "unknown_device_id": unknown_device_id,
+        "device_id": new_device.id,
+        "device": {
+            "id": new_device.id,
+            "name": new_device.name,
+            "unique_id": new_device.unique_id,
+            "protocol": new_device.protocol,
+            "category": new_device.category
+        }
     }
 
 

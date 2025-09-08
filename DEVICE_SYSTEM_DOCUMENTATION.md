@@ -4,6 +4,14 @@
 
 O sistema de dispositivos permite gerenciar dispositivos GPS, smartphones e outros equipamentos de rastreamento no Traccar. Cada dispositivo pode ser associado a grupos, pessoas e possui informações específicas como placa, categoria e protocolo.
 
+### ✅ Status do Sistema
+- **Dispositivos Registrados**: ✅ Funcionando
+- **Dispositivos Desconhecidos**: ✅ Funcionando
+- **Sistema de Logs**: ✅ Funcionando (posições sendo salvas)
+- **Real Device ID**: ✅ Exibido corretamente
+- **Criação de Dispositivos**: ✅ Funcionando
+- **Linkagem de Dispositivos**: ✅ Funcionando
+
 ## 🏗️ Arquitetura do Sistema
 
 ### Backend (Python/FastAPI)
@@ -11,6 +19,7 @@ O sistema de dispositivos permite gerenciar dispositivos GPS, smartphones e outr
 - **API**: `app/api/devices.py`
 - **Schemas**: `app/schemas/device.py`
 - **Banco**: PostgreSQL com tabela `devices`
+- **Protocolos**: Suntech, OsmAnd (ver documentação específica)
 
 ### Frontend (React/TypeScript)
 - **Hook**: `src/hooks/useDevices.ts`
@@ -491,6 +500,117 @@ docker-compose -f docker-compose.dev.yml logs postgres
 - [Sistema de Grupos](./GROUP_HIERARCHY_SYSTEM.md)
 - [Sistema de Pessoas](./USER_MANAGEMENT_DEBUG_GUIDE.md)
 - [Guia de Acesso PostgreSQL](./POSTGRESQL_ACCESS_GUIDE.md)
+
+## 🔄 Sistema de Dispositivos Desconhecidos
+
+### Visão Geral
+O sistema de dispositivos desconhecidos permite gerenciar dispositivos que se conectam ao servidor mas ainda não foram registrados no sistema.
+
+### Fluxo de Funcionamento
+1. **Conexão**: Dispositivo GPS se conecta nas portas 5011 (Suntech) ou 5055 (OsmAnd)
+2. **Detecção Automática**: Sistema cria registro em `unknown_devices` automaticamente
+3. **Exibição**: Dispositivo aparece na página `/unknown-devices`
+4. **Registro**: Usuário pode criar um novo dispositivo ou linkar a um existente
+
+### API Endpoints para Dispositivos Desconhecidos
+
+#### Listar Dispositivos Desconhecidos
+```http
+GET /api/unknown-devices/
+Authorization: Bearer <token>
+```
+
+#### Criar Dispositivo a partir de Desconhecido
+```http
+POST /api/unknown-devices/{unknown_device_id}/create-device
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "Nome do Dispositivo",
+  "model": "Modelo",
+  "contact": "Contato",
+  "category": "car",
+  "phone": "+5511999999999",
+  "license_plate": "ABC-1234"
+}
+```
+
+#### Linkar a Dispositivo Existente
+```http
+POST /api/unknown-devices/{unknown_device_id}/register
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "device_id": 123
+}
+```
+
+### Interface do Usuário
+- **Página**: `http://localhost:3000/unknown-devices`
+- **Ações Disponíveis**:
+  - 👁️ **Ver Detalhes**: Informações do dispositivo
+  - ➕ **Criar Dispositivo**: Criar novo dispositivo registrado
+  - 🔗 **Linkar Dispositivo**: Associar a dispositivo existente
+  - 🗑️ **Deletar**: Remover dispositivo desconhecido
+
+## 🔧 Correções Recentes Implementadas
+
+### 1. Sistema de Logs para Dispositivos Desconhecidos
+- **Arquivo**: `app/protocols/suntech.py`
+- **Problema**: Posições não eram salvas para dispositivos desconhecidos
+- **Causa**: Método `_parse_legacy_message` não incluía latitude/longitude obrigatórios
+- **Solução**: Adicionado parsing de coordenadas no método legacy
+- **Status**: ✅ Corrigido
+
+### 2. Real Device ID em Posições
+- **Arquivo**: `app/protocols/suntech.py`
+- **Problema**: Real Device ID não aparecia nos atributos das posições
+- **Causa**: `client_info` não era passado para `_parse_location_message`
+- **Solução**: Corrigido passagem de parâmetros e parsing de datetime
+- **Status**: ✅ Corrigido
+
+### 3. Validação Pydantic
+- **Arquivo**: `app/protocols/suntech.py`
+- **Problema**: Erro "Field required" para latitude/longitude
+- **Causa**: Campos obrigatórios não estavam sendo preenchidos
+- **Solução**: Garantido que todos os campos obrigatórios sejam preenchidos
+- **Status**: ✅ Corrigido
+
+### 4. Salvamento Contínuo de Posições
+- **Arquivo**: `app/protocols/suntech.py`
+- **Problema**: Sistema só salvava posições uma vez (na criação/linkagem)
+- **Causa**: Suporte limitado a prefixos numéricos e referências incorretas de variáveis
+- **Solução**: Adicionado suporte a prefixos numéricos e corrigido referências de variáveis
+- **Status**: ✅ Corrigido
+
+### 5. Suporte a Prefixos Numéricos
+- **Arquivo**: `app/protocols/suntech.py`
+- **Problema**: Erro "Could not extract device ID from prefix" para prefixos como `47733387`
+- **Causa**: Método só suportava formato ST (`ST300STT`)
+- **Solução**: Adicionado suporte para prefixos numéricos
+- **Status**: ✅ Corrigido
+
+## 📡 Protocolos Suportados
+
+### **Protocolo Suntech**
+- **Porta**: 5011 (TCP)
+- **Formatos**: Universal (ST) e Legacy (numérico)
+- **Status**: ✅ 100% funcional
+- **Documentação**: [SUNTECH_PROTOCOL_DOCUMENTATION.md](./SUNTECH_PROTOCOL_DOCUMENTATION.md)
+- **Recursos**:
+  - Suporte a prefixos ST (`ST300STT`) e numéricos (`47733387`)
+  - Salvamento contínuo de posições
+  - Real Device ID nos atributos
+  - Dispositivos desconhecidos
+  - Alarmes e alertas
+
+### **Protocolo OsmAnd**
+- **Porta**: 5055 (HTTP)
+- **Formato**: HTTP POST
+- **Status**: ✅ Implementado
+- **Documentação**: [OSMAND_PROTOCOL_IMPLEMENTATION.md](./OSMAND_PROTOCOL_IMPLEMENTATION.md)
 
 ## 🎯 Roadmap
 

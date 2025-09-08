@@ -88,12 +88,15 @@ class SuntechProtocolHandler(BaseProtocolHandler):
             index += 1
             
             # Extract device ID from prefix
+            # Support both ST format (ST300STT) and numeric format (47733387)
             device_id_match = re.search(r'ST\w+STT', prefix)
-            if not device_id_match:
+            if device_id_match:
+                device_identifier = device_id_match.group()
+            elif prefix.isdigit():
+                device_identifier = prefix
+            else:
                 logger.warning("Could not extract device ID from prefix", prefix=prefix)
                 return None
-            
-            device_identifier = device_id_match.group()
             
             # Extract real device ID from message (index 1)
             real_device_id = parts[1] if len(parts) > 1 else device_identifier
@@ -110,7 +113,7 @@ class SuntechProtocolHandler(BaseProtocolHandler):
             index += 1
             
             # In this format, we assume it's a location message
-            return await self._parse_location_message(parts, index, device, self.MSG_LOCATION)
+            return await self._parse_location_message(parts, index, device, self.MSG_LOCATION, client_info)
                 
         except Exception as e:
             logger.error("Error parsing universal message", error=str(e), message=message)
@@ -138,8 +141,21 @@ class SuntechProtocolHandler(BaseProtocolHandler):
                 'valid': True
             }
             
-            # This is a simplified legacy parser - would need full implementation
-            # based on specific legacy format requirements
+            # Parse latitude and longitude from the message
+            # Based on the message format: LOGTEST9;111222333;04;1097B;20250908;12:44:33;33e530;-03.843813;-038.615475;...
+            try:
+                if len(parts) >= 8:
+                    latitude = float(parts[7])
+                    longitude = float(parts[8])
+                    position_data['latitude'] = latitude
+                    position_data['longitude'] = longitude
+                    logger.info("Legacy parser: parsed coordinates", lat=latitude, lon=longitude)
+                else:
+                    logger.warning("Legacy parser: insufficient parts for coordinates", parts_count=len(parts))
+                    return None
+            except (ValueError, IndexError) as e:
+                logger.error("Legacy parser: failed to parse coordinates", error=str(e), parts=parts)
+                return None
             
             return [PositionCreate(**position_data)]
             
@@ -147,7 +163,7 @@ class SuntechProtocolHandler(BaseProtocolHandler):
             logger.error("Error parsing legacy message", error=str(e), message=message)
             return None
     
-    async def _parse_location_message(self, parts: List[str], start_index: int, device: Device, message_type: str) -> Optional[List[PositionCreate]]:
+    async def _parse_location_message(self, parts: List[str], start_index: int, device: Device, message_type: str, client_info: Dict[str, Any] = None) -> Optional[List[PositionCreate]]:
         """Parse location-type message"""
         try:
             index = start_index
@@ -172,8 +188,10 @@ class SuntechProtocolHandler(BaseProtocolHandler):
             
             # Parse datetime using Suntech-specific parser
             datetime_str = f"{date_str}{time_str}"
-            device_time = parse_suntech_date_time(datetime_str)
-            if not device_time:
+            try:
+                from datetime import datetime
+                device_time = datetime.strptime(datetime_str, "%Y%m%d%H:%M:%S")
+            except ValueError:
                 logger.warning("Could not parse datetime", date=date_str, time=time_str, datetime_str=datetime_str)
                 return None
             
@@ -183,6 +201,7 @@ class SuntechProtocolHandler(BaseProtocolHandler):
             # Latitude (-03.843813) - index 7
             try:
                 latitude = float(parts[7])
+                logger.info("Parsed latitude", latitude=latitude, raw=parts[7])
             except (ValueError, IndexError):
                 logger.warning("Invalid latitude", lat_part=parts[7] if len(parts) > 7 else None)
                 return None
@@ -190,12 +209,16 @@ class SuntechProtocolHandler(BaseProtocolHandler):
             # Longitude (-038.615475) - index 8
             try:
                 longitude = float(parts[8])
+                logger.info("Parsed longitude", longitude=longitude, raw=parts[8])
             except (ValueError, IndexError):
                 logger.warning("Invalid longitude", lon_part=parts[8] if len(parts) > 8 else None)
                 return None
             
-            if not is_valid_coordinates(latitude, longitude):
-                logger.warning("Invalid coordinate values", lat=latitude, lon=longitude)
+            logger.info("After parsing lat/lon", latitude=latitude, longitude=longitude)
+            
+            # Validate coordinates
+            if latitude == 0.0 and longitude == 0.0:
+                logger.warning("Invalid coordinate values (0,0)", lat=latitude, lon=longitude)
                 return None
             
             # Speed (000.013) - index 9
@@ -230,6 +253,7 @@ class SuntechProtocolHandler(BaseProtocolHandler):
                 except (ValueError, IndexError):
                     pass
             
+            
             # Create position object
             position_data = {
                 'device_id': device.id,
@@ -246,7 +270,8 @@ class SuntechProtocolHandler(BaseProtocolHandler):
                     'version_fw': firmware_version,
                     'protocol_type': protocol_type,
                     'cell_info': cell_info,
-                    'gps_status': gps_status
+                    'gps_status': gps_status,
+                    'real_device_id': client_info.get('real_device_id', device.unique_id) if client_info else device.unique_id
                 }
             }
             
@@ -395,7 +420,7 @@ class SuntechProtocolHandler(BaseProtocolHandler):
             return ProtocolMessage(
                 device_id=position.device_id,
                 message_type='location',
-                data=position.model_dump(),
+                data=position.dict(),
                 timestamp=position.device_time or datetime.utcnow(),
                 raw_data=data,
                 valid=True
@@ -430,13 +455,16 @@ class SuntechProtocolHandler(BaseProtocolHandler):
             
             position_data = {
                 'device_id': message.device_id,
+                'protocol': self.PROTOCOL_NAME,
+                'server_time': datetime.utcnow(),
+                'device_time': data.get('device_time', message.timestamp),
+                'fix_time': data.get('fix_time', message.timestamp),
                 'latitude': latitude,
                 'longitude': longitude,
                 'altitude': data.get('altitude', 0),
                 'speed': data.get('speed', 0),
                 'course': data.get('course', 0),
-                'timestamp': message.timestamp,
-                'valid': True,
+                'valid': data.get('valid', True),
                 'attributes': {
                     'satellites': data.get('satellites'),
                     'hdop': data.get('hdop'),
@@ -445,7 +473,12 @@ class SuntechProtocolHandler(BaseProtocolHandler):
                     'battery': data.get('battery'),
                     'power': data.get('power'),
                     'ignition': data.get('ignition'),
-                    'motion': data.get('motion')
+                    'motion': data.get('motion'),
+                    'version_fw': data.get('version_fw'),
+                    'protocol_type': data.get('protocol_type'),
+                    'cell_info': data.get('cell_info'),
+                    'gps_status': data.get('gps_status'),
+                    'real_device_id': data.get('real_device_id')
                 }
             }
             
@@ -599,7 +632,7 @@ class SuntechProtocolHandler(BaseProtocolHandler):
                     
                     # Create a mock device object for compatibility
                     device = type('Device', (), {
-                        'id': existing_unknown.id,  # Use unknown device ID
+                        'id': existing_unknown.id,  # Use existing unknown device ID
                         'unique_id': device_identifier,
                         'name': f'Suntech Device {device_identifier}',
                         'is_unknown': True
@@ -650,7 +683,7 @@ class SuntechProtocolHandler(BaseProtocolHandler):
                     
                     # Create a mock device object for compatibility
                     device = type('Device', (), {
-                        'id': existing_unknown.id,  # Use unknown device ID
+                        'id': unknown_device.id,  # Use new unknown device ID
                         'unique_id': device_identifier,
                         'name': f'Suntech Device {device_identifier}',
                         'is_unknown': True

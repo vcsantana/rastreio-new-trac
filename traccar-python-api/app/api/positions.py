@@ -54,39 +54,56 @@ async def get_latest_positions(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get the latest position for each device"""
+    """Get the latest position for each device (including unknown devices)"""
     from app.api.groups import get_user_accessible_groups
+    from app.models.unknown_device import UnknownDevice
     
     # Get accessible groups for the user
     accessible_groups = await get_user_accessible_groups(db, current_user.id, current_user.is_admin)
     
-    # Build query with group filtering
-    query = select(Device)
-    
-    # Filter by accessible groups (admin sees all, regular users see only their groups)
-    if not current_user.is_admin:
-        if not accessible_groups:
-            # User has no group permissions, return empty list
-            return []
-        query = query.where(
-            (Device.group_id.in_(accessible_groups)) |
-            (Device.group_id.is_(None))  # Include devices without group
-        )
-    
-    devices_result = await db.execute(query)
-    devices = devices_result.scalars().all()
-    
     latest_positions = []
-    for device in devices:
-        position_result = await db.execute(
-            select(Position)
-            .where(Position.device_id == device.id)
-            .order_by(Position.server_time.desc())
-            .limit(1)
-        )
-        position = position_result.scalar_one_or_none()
-        if position:
-            latest_positions.append(PositionResponse.from_orm(position))
+    
+    # Get latest positions from registered devices
+    if current_user.is_admin or accessible_groups:
+        # Build query with group filtering
+        query = select(Device)
+        
+        # Filter by accessible groups (admin sees all, regular users see only their groups)
+        if not current_user.is_admin:
+            query = query.where(
+                (Device.group_id.in_(accessible_groups)) |
+                (Device.group_id.is_(None))  # Include devices without group
+            )
+        
+        devices_result = await db.execute(query)
+        devices = devices_result.scalars().all()
+        
+        for device in devices:
+            position_result = await db.execute(
+                select(Position)
+                .where(Position.device_id == device.id)
+                .order_by(Position.server_time.desc())
+                .limit(1)
+            )
+            position = position_result.scalar_one_or_none()
+            if position:
+                latest_positions.append(PositionResponse.from_orm(position))
+    
+    # Get latest positions from unknown devices (only for admins or if user has group permissions)
+    if current_user.is_admin or accessible_groups:
+        unknown_devices_result = await db.execute(select(UnknownDevice))
+        unknown_devices = unknown_devices_result.scalars().all()
+        
+        for unknown_device in unknown_devices:
+            position_result = await db.execute(
+                select(Position)
+                .where(Position.unknown_device_id == unknown_device.id)
+                .order_by(Position.server_time.desc())
+                .limit(1)
+            )
+            position = position_result.scalar_one_or_none()
+            if position:
+                latest_positions.append(PositionResponse.from_orm(position))
     
     return latest_positions
 

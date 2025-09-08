@@ -12,7 +12,8 @@ import { useDeviceHistory } from '../../hooks/useDeviceHistory';
 
 interface Position {
   id: number;
-  device_id: number;
+  device_id?: number;
+  unknown_device_id?: number;
   deviceId?: number; // For backward compatibility
   server_time: string;
   device_time?: string;
@@ -147,10 +148,10 @@ const MapView: React.FC<MapViewProps> = ({
   
   // For replay mode, use currentReplayPosition, otherwise use latest position
   const selectedPosition = useMemo(() => {
-    if (isReplaying && currentReplayPosition && currentReplayPosition.device_id === selectedDeviceId) {
+    if (isReplaying && currentReplayPosition && (currentReplayPosition.device_id === selectedDeviceId || currentReplayPosition.unknown_device_id === selectedDeviceId)) {
       return currentReplayPosition;
     }
-    return positions?.find(p => (p.deviceId || p.device_id) === selectedDeviceId);
+    return positions?.find(p => (p.deviceId || p.device_id || p.unknown_device_id) === selectedDeviceId);
   }, [positions, selectedDeviceId, isReplaying, currentReplayPosition]);
 
   // Fetch device history for route tracking (skip if we're in replay mode and already have positions)
@@ -167,7 +168,7 @@ const MapView: React.FC<MapViewProps> = ({
       // Convert positions to the format expected by RoutePath
       return positions.map(pos => ({
         ...pos,
-        deviceId: pos.device_id || pos.deviceId || 0,
+        deviceId: pos.device_id || pos.deviceId || pos.unknown_device_id || 0,
       }));
     }
     return historyPositions;
@@ -199,7 +200,7 @@ const MapView: React.FC<MapViewProps> = ({
     }
     
     // Fly to the selected device
-    const position = positions.find(p => p.deviceId === deviceId);
+    const position = positions.find(p => (p.deviceId || p.device_id || p.unknown_device_id) === deviceId);
     if (position && map) {
       map.flyTo({
         center: [position.longitude, position.latitude],
@@ -307,7 +308,7 @@ const MapView: React.FC<MapViewProps> = ({
           device={selectedDevice}
           position={{
             ...selectedPosition,
-            deviceId: selectedPosition.deviceId || selectedPosition.device_id || 0
+            deviceId: selectedPosition.deviceId || selectedPosition.device_id || selectedPosition.unknown_device_id || 0
           }}
           onClose={handleCloseDeviceInfo}
         />

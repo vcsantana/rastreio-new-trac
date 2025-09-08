@@ -125,6 +125,8 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
       newSocket.onerror = (error) => {
         console.error('WebSocket error:', error);
+        console.error('WebSocket URL:', wsUrl);
+        console.error('User ID:', user.id);
         setConnectionError('WebSocket connection error');
       };
 

@@ -7,7 +7,8 @@ from datetime import datetime
 import json
 
 class PositionBase(BaseModel):
-    device_id: int
+    device_id: Optional[int] = None
+    unknown_device_id: Optional[int] = None
     protocol: str
     valid: bool = True
     latitude: float

@@ -92,8 +92,8 @@ const DashboardTest: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: 'test@traccar.com',
-          password: 'test123'
+          email: 'admin@traccar.com',
+          password: 'admin123'
         }),
       });
 
@@ -134,6 +134,36 @@ const DashboardTest: React.FC = () => {
       const devicesData = await devicesResponse.json();
       console.log('📱 Devices data:', devicesData.length, 'devices');
 
+      console.log('📡 Fetching unknown devices...');
+      // Fetch unknown devices
+      const unknownDevicesResponse = await fetch('http://localhost:8000/api/unknown-devices', { headers });
+      console.log('📡 Unknown devices response status:', unknownDevicesResponse.status);
+      if (unknownDevicesResponse.ok) {
+        const unknownDevicesData = await unknownDevicesResponse.json();
+        console.log('📱 Unknown devices data:', unknownDevicesData.length, 'unknown devices');
+        
+        // Convert unknown devices to device format for compatibility
+        const convertedUnknownDevices = unknownDevicesData.map((unknownDevice: any) => ({
+          id: unknownDevice.id,
+          name: `Unknown ${unknownDevice.unique_id}`,
+          unique_id: unknownDevice.unique_id,
+          protocol: unknownDevice.protocol,
+          status: 'online', // Assume unknown devices are online if they have recent data
+          category: 'unknown',
+          last_update: unknownDevice.last_seen,
+          is_unknown: true
+        }));
+        
+        console.log('🔍 Converted unknown devices:', convertedUnknownDevices);
+        
+        // Combine registered and unknown devices
+        devicesData.push(...convertedUnknownDevices);
+        console.log('📱 Total devices (registered + unknown):', devicesData.length);
+        console.log('📱 All devices:', devicesData);
+      } else {
+        console.log('⚠️ Failed to fetch unknown devices, continuing with registered devices only');
+      }
+
       console.log('📍 Fetching positions...');
       // Fetch positions
       const positionsResponse = await fetch('http://localhost:8000/api/positions/latest', { headers });
@@ -143,6 +173,7 @@ const DashboardTest: React.FC = () => {
       }
       const positionsData = await positionsResponse.json();
       console.log('📍 Positions data:', positionsData.length, 'positions');
+      console.log('📍 All positions:', positionsData);
 
       setDevices(devicesData);
       setPositions(positionsData);
@@ -174,30 +205,32 @@ const DashboardTest: React.FC = () => {
   }, []);
 
   // Transform data for map display
-  const mapDevices = useMemo(() => 
-    devices.map(device => ({
+  const mapDevices = useMemo(() => {
+    const converted = devices.map(device => ({
       id: device.id,
       name: device.name,
       status: device.status || 'unknown',
       category: device.category || 'unknown',
       lastUpdate: device.last_update || new Date().toISOString(),
-    })), 
-    [devices]
-  );
+    }));
+    console.log('📱 Converted devices for map:', converted);
+    return converted;
+  }, [devices]);
 
-  const mapPositions = useMemo(() => 
-    positions.map(position => ({
+  const mapPositions = useMemo(() => {
+    const converted = positions.map(position => ({
       id: position.id,
-      deviceId: position.device_id,
+      deviceId: position.device_id || position.unknown_device_id,
       latitude: position.latitude,
       longitude: position.longitude,
       course: position.course || 0,
       speed: position.speed || 0,
       fixTime: position.device_time || position.server_time,
       attributes: position.attributes || {},
-    })), 
-    [positions]
-  );
+    }));
+    console.log('🗺️ Converted positions for map:', converted);
+    return converted;
+  }, [positions]);
 
   // Calculate stats
   const stats = useMemo(() => {

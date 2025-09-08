@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { API_ENDPOINTS } from '../api/apiConfig';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -190,6 +190,13 @@ export const useDevices = () => {
       setLoading(false);
     }
   }, [token]);
+
+  // Auto-fetch devices when component mounts
+  useEffect(() => {
+    if (token) {
+      fetchDevices();
+    }
+  }, [fetchDevices, token]);
 
   return {
     devices,

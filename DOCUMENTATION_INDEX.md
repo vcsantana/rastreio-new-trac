@@ -20,6 +20,13 @@
 ### 📱 **Sistema de Dispositivos**
 - **[DEVICE_SYSTEM_DOCUMENTATION.md](./DEVICE_SYSTEM_DOCUMENTATION.md)** - Documentação completa do sistema
 - **[DEVICE_USAGE_EXAMPLES.md](./DEVICE_USAGE_EXAMPLES.md)** - Exemplos práticos e casos de uso
+- **[DEBUG_UNKNOWN_DEVICES.md](./DEBUG_UNKNOWN_DEVICES.md)** - Guia de debug para dispositivos desconhecidos
+- **[LOGS_SYSTEM_FIX_SUMMARY.md](./LOGS_SYSTEM_FIX_SUMMARY.md)** - Resumo das correções do sistema de logs
+- **[CONTINUOUS_POSITION_SAVING_FIX.md](./CONTINUOUS_POSITION_SAVING_FIX.md)** - Correção do salvamento contínuo de posições
+
+### 📡 **Protocolos de Comunicação**
+- **[SUNTECH_PROTOCOL_DOCUMENTATION.md](./SUNTECH_PROTOCOL_DOCUMENTATION.md)** - Documentação completa do protocolo Suntech
+- **[OSMAND_PROTOCOL_IMPLEMENTATION.md](./OSMAND_PROTOCOL_IMPLEMENTATION.md)** - Implementação do protocolo OsmAnd
 
 ### 👥 **Sistema de Grupos**
 - **[GROUP_HIERARCHY_SYSTEM.md](./GROUP_HIERARCHY_SYSTEM.md)** - Sistema hierárquico de grupos
