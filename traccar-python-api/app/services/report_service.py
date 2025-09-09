@@ -18,6 +18,7 @@ from app.schemas.report import (
     StopsReportData, TripsReportData
 )
 from app.services.websocket_service import websocket_service
+from app.services.report_providers import ReportProviderFactory
 
 import logging
 logger = logging.getLogger(__name__)
@@ -30,37 +31,29 @@ class ReportGenerator:
         self.db = db
     
     async def generate_report(self, report: Report) -> Dict[str, Any]:
-        """Generate report based on type."""
+        """Generate report based on type using specialized providers."""
         try:
             # Update report status
             report.status = "processing"
             self.db.commit()
             
-            # Get date range
-            from_date, to_date = self._get_date_range(report.period, report.from_date, report.to_date)
+            # Create appropriate provider
+            provider = ReportProviderFactory.create_provider(report.report_type, self.db)
             
-            # Generate report based on type
-            if report.report_type == ReportType.ROUTE:
-                data = await self._generate_route_report(report, from_date, to_date)
-            elif report.report_type == ReportType.SUMMARY:
-                data = await self._generate_summary_report(report, from_date, to_date)
-            elif report.report_type == ReportType.EVENTS:
-                data = await self._generate_events_report(report, from_date, to_date)
-            elif report.report_type == ReportType.STOPS:
-                data = await self._generate_stops_report(report, from_date, to_date)
-            elif report.report_type == ReportType.TRIPS:
-                data = await self._generate_trips_report(report, from_date, to_date)
-            else:
-                raise ValueError(f"Unsupported report type: {report.report_type}")
+            # Generate report data
+            report_data = await provider.generate_report(report)
+            
+            # Parse JSON data for response
+            data = json.loads(report_data.decode('utf-8'))
             
             # Format and save report
-            file_path = await self._save_report(report, data)
+            file_path = await self._save_report(report, report_data)
             
             # Update report status
             report.status = "completed"
             report.completed_at = datetime.utcnow()
             report.file_path = file_path
-            report.file_size = len(str(data))
+            report.file_size = len(report_data)
             self.db.commit()
             
             # Broadcast completion via WebSocket
@@ -506,7 +499,7 @@ class ReportGenerator:
         
         return R * c / 1000  # Convert to kilometers
     
-    async def _save_report(self, report: Report, data: Dict[str, Any]) -> str:
+    async def _save_report(self, report: Report, data: bytes) -> str:
         """Save report to file."""
         # In a real implementation, this would save to actual files
         # For now, just return a mock file path

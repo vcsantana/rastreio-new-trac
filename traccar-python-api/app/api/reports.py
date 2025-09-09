@@ -18,6 +18,8 @@ from app.schemas.report import (
 )
 from app.api.auth import get_current_user
 from app.services.report_service import ReportGenerator
+from app.services.report_scheduler import ReportScheduler, CalendarIntegration
+from app.services.email_service import EmailService
 
 router = APIRouter()
 

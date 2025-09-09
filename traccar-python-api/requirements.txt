@@ -46,3 +46,6 @@ mypy==1.9.0
 
 # Protocol handling
 pyserial==3.5
+
+# Report scheduling and email
+croniter==2.0.1
