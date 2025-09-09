@@ -11,9 +11,9 @@ import uvicorn
 
 from app.config import settings
 from app.database import init_db
-from app.api import auth, devices, positions, websocket, events, geofences, server, protocols, reports, groups, persons, logs, unknown_devices, users, cache, tasks, commands, device_images, device_detection, device_expiration, device_scheduling
+from app.api import auth, devices, positions, websocket, events, geofences, server, protocols, reports, groups, persons, logs, unknown_devices, users, cache, tasks, commands, command_templates, device_images, device_detection, device_expiration, device_scheduling
 # Import models to ensure they are registered with SQLAlchemy
-from app.models import user, device, position, event, geofence, report, group, person, unknown_device, command, device_image
+from app.models import user, device, position, event, geofence, report, group, person, unknown_device, command, command_template, device_image
 from app.models import server as server_model
 # Import protocol server manager
 from app.protocols import start_protocol_servers, stop_protocol_servers
@@ -213,6 +213,7 @@ app.include_router(websocket.router, tags=["WebSocket"])
 app.include_router(cache.router, prefix="/api/cache", tags=["Cache Management"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["Background Tasks"])
 app.include_router(commands.router, tags=["Commands"])
+app.include_router(command_templates.router, tags=["Command Templates"])
 app.include_router(device_images.router, prefix="/api/devices", tags=["Device Images"])
 app.include_router(device_detection.router, prefix="/api/devices", tags=["Device Detection"])
 app.include_router(device_expiration.router, prefix="/api/devices", tags=["Device Expiration"])

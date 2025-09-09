@@ -5,8 +5,9 @@ Command service for managing device commands.
 import asyncio
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any, Tuple
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import and_, or_, desc, asc, func
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
+from sqlalchemy import and_, or_, desc, asc, func, select
 import structlog
 
 from app.models.command import Command, CommandQueue, CommandType, CommandStatus, CommandPriority
@@ -25,19 +26,25 @@ logger = structlog.get_logger(__name__)
 class CommandService:
     """Service for managing device commands."""
     
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
     
     async def create_command(self, command_data: CommandCreate, user_id: int) -> Command:
         """Create a new command."""
         try:
             # Validate device exists and user has permission
-            device = self.db.query(Device).filter(Device.id == command_data.device_id).first()
+            device_result = await self.db.execute(
+                select(Device).filter(Device.id == command_data.device_id)
+            )
+            device = device_result.scalar_one_or_none()
             if not device:
                 raise ValueError(f"Device {command_data.device_id} not found")
             
             # Check if user has permission to send commands to this device
-            user = self.db.query(User).filter(User.id == user_id).first()
+            user_result = await self.db.execute(
+                select(User).filter(User.id == user_id)
+            )
+            user = user_result.scalar_one_or_none()
             if not user:
                 raise ValueError(f"User {user_id} not found")
             
@@ -48,6 +55,9 @@ class CommandService:
                 command_type=command_data.command_type,
                 priority=command_data.priority,
                 parameters=command_data.parameters,
+                attributes=command_data.attributes,
+                description=command_data.description,
+                text_channel=command_data.text_channel,
                 expires_at=command_data.expires_at,
                 max_retries=command_data.max_retries,
                 status=CommandStatus.PENDING
@@ -57,8 +67,8 @@ class CommandService:
             command.raw_command = await self._generate_raw_command(command)
             
             self.db.add(command)
-            self.db.commit()
-            self.db.refresh(command)
+            await self.db.commit()
+            await self.db.refresh(command)
             
             # Add to command queue
             await self._add_to_queue(command)
@@ -78,7 +88,7 @@ class CommandService:
             return command
             
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(
                 "Failed to create command",
                 error=str(e),
@@ -100,6 +110,9 @@ class CommandService:
                     command_type=bulk_data.command_type,
                     priority=bulk_data.priority,
                     parameters=bulk_data.parameters,
+                    attributes=bulk_data.attributes,
+                    description=bulk_data.description,
+                    text_channel=bulk_data.text_channel,
                     expires_at=bulk_data.expires_at,
                     max_retries=bulk_data.max_retries
                 )
@@ -130,15 +143,15 @@ class CommandService:
         if cached_command:
             return cached_command
         
-        command = (
-            self.db.query(Command)
+        result = await self.db.execute(
+            select(Command)
             .options(
                 joinedload(Command.device),
                 joinedload(Command.user)
             )
             .filter(Command.id == command_id)
-            .first()
         )
+        command = result.scalar_one_or_none()
         
         if command:
             await cache_manager.set(cache_key, command, expire=300)
@@ -157,8 +170,8 @@ class CommandService:
         if cached_result:
             return cached_result["commands"], cached_result["total"]
         
-        query = (
-            self.db.query(Command)
+        base_query = (
+            select(Command)
             .options(
                 joinedload(Command.device),
                 joinedload(Command.user)
@@ -170,31 +183,31 @@ class CommandService:
             filters = search.filters
             
             if filters.device_id:
-                query = query.filter(Command.device_id == filters.device_id)
+                base_query = base_query.filter(Command.device_id == filters.device_id)
             
             if filters.user_id:
-                query = query.filter(Command.user_id == filters.user_id)
+                base_query = base_query.filter(Command.user_id == filters.user_id)
             
             if filters.command_type:
-                query = query.filter(Command.command_type == filters.command_type)
+                base_query = base_query.filter(Command.command_type == filters.command_type)
             
             if filters.status:
-                query = query.filter(Command.status == filters.status)
+                base_query = base_query.filter(Command.status == filters.status)
             
             if filters.priority:
-                query = query.filter(Command.priority == filters.priority)
+                base_query = base_query.filter(Command.priority == filters.priority)
             
             if filters.created_after:
-                query = query.filter(Command.created_at >= filters.created_after)
+                base_query = base_query.filter(Command.created_at >= filters.created_after)
             
             if filters.created_before:
-                query = query.filter(Command.created_at <= filters.created_before)
+                base_query = base_query.filter(Command.created_at <= filters.created_before)
             
             if filters.is_expired is not None:
                 if filters.is_expired:
-                    query = query.filter(Command.expires_at < datetime.utcnow())
+                    base_query = base_query.filter(Command.expires_at < datetime.utcnow())
                 else:
-                    query = query.filter(
+                    base_query = base_query.filter(
                         or_(
                             Command.expires_at.is_(None),
                             Command.expires_at >= datetime.utcnow()
@@ -203,7 +216,7 @@ class CommandService:
             
             if filters.can_retry is not None:
                 if filters.can_retry:
-                    query = query.filter(
+                    base_query = base_query.filter(
                         and_(
                             Command.status.in_([CommandStatus.FAILED, CommandStatus.TIMEOUT]),
                             Command.retry_count < Command.max_retries,
@@ -214,7 +227,7 @@ class CommandService:
                         )
                     )
                 else:
-                    query = query.filter(
+                    base_query = base_query.filter(
                         or_(
                             Command.status.notin_([CommandStatus.FAILED, CommandStatus.TIMEOUT]),
                             Command.retry_count >= Command.max_retries,
@@ -227,7 +240,7 @@ class CommandService:
         
         # Apply search query
         if search.query:
-            query = query.filter(
+            base_query = base_query.filter(
                 or_(
                     Command.command_type.ilike(f"%{search.query}%"),
                     Command.raw_command.ilike(f"%{search.query}%"),
@@ -237,7 +250,8 @@ class CommandService:
             )
         
         # Get total count
-        total = query.count()
+        count_result = await self.db.execute(select(func.count()).select_from(base_query.subquery()))
+        total = count_result.scalar()
         
         # Apply sorting
         if search.sort_by == "created_at":
@@ -254,13 +268,17 @@ class CommandService:
             sort_column = Command.created_at
         
         if search.sort_order == "asc":
-            query = query.order_by(asc(sort_column))
+            base_query = base_query.order_by(asc(sort_column))
         else:
-            query = query.order_by(desc(sort_column))
+            base_query = base_query.order_by(desc(sort_column))
         
         # Apply pagination
         offset = (search.page - 1) * search.size
-        commands = query.offset(offset).limit(search.size).all()
+        base_query = base_query.offset(offset).limit(search.size)
+        
+        # Execute query
+        result = await self.db.execute(base_query)
+        commands = result.scalars().all()
         
         # Cache result
         result = {"commands": commands, "total": total}
@@ -298,8 +316,17 @@ class CommandService:
         if update_data.retry_count is not None:
             command.retry_count = update_data.retry_count
         
-        self.db.commit()
-        self.db.refresh(command)
+        if update_data.attributes is not None:
+            command.attributes = update_data.attributes
+        
+        if update_data.description is not None:
+            command.description = update_data.description
+        
+        if update_data.text_channel is not None:
+            command.text_channel = update_data.text_channel
+        
+        await self.db.commit()
+        await self.db.refresh(command)
         
         # Invalidate cache
         await cache_manager.delete_pattern(f"command:{command_id}:*")
@@ -339,7 +366,7 @@ class CommandService:
             command.response = None
             command.error_message = None
             
-            self.db.commit()
+            await self.db.commit()
             
             # Re-add to queue
             await self._add_to_queue(command)
@@ -373,7 +400,7 @@ class CommandService:
             command.status = CommandStatus.CANCELLED
             command.error_message = cancel_data.reason or "Cancelled by user"
             
-            self.db.commit()
+            await self.db.commit()
             
             # Remove from queue
             await self._remove_from_queue(command)
@@ -401,49 +428,76 @@ class CommandService:
             return cached_stats
         
         # Get basic stats
-        total_commands = self.db.query(Command).count()
-        pending_commands = self.db.query(Command).filter(Command.status == CommandStatus.PENDING).count()
-        sent_commands = self.db.query(Command).filter(Command.status == CommandStatus.SENT).count()
-        executed_commands = self.db.query(Command).filter(Command.status == CommandStatus.EXECUTED).count()
-        failed_commands = self.db.query(Command).filter(Command.status == CommandStatus.FAILED).count()
-        cancelled_commands = self.db.query(Command).filter(Command.status == CommandStatus.CANCELLED).count()
-        expired_commands = self.db.query(Command).filter(Command.expires_at < datetime.utcnow()).count()
+        total_result = await self.db.execute(select(func.count()).select_from(Command))
+        total_commands = total_result.scalar()
+        
+        pending_result = await self.db.execute(select(func.count()).select_from(Command).filter(Command.status == CommandStatus.PENDING))
+        pending_commands = pending_result.scalar()
+        
+        sent_result = await self.db.execute(select(func.count()).select_from(Command).filter(Command.status == CommandStatus.SENT))
+        sent_commands = sent_result.scalar()
+        
+        executed_result = await self.db.execute(select(func.count()).select_from(Command).filter(Command.status == CommandStatus.EXECUTED))
+        executed_commands = executed_result.scalar()
+        
+        failed_result = await self.db.execute(select(func.count()).select_from(Command).filter(Command.status == CommandStatus.FAILED))
+        failed_commands = failed_result.scalar()
+        
+        cancelled_result = await self.db.execute(select(func.count()).select_from(Command).filter(Command.status == CommandStatus.CANCELLED))
+        cancelled_commands = cancelled_result.scalar()
+        
+        expired_result = await self.db.execute(select(func.count()).select_from(Command).filter(Command.expires_at < datetime.utcnow()))
+        expired_commands = expired_result.scalar()
         
         # Priority stats
-        low_priority = self.db.query(Command).filter(Command.priority == CommandPriority.LOW).count()
-        normal_priority = self.db.query(Command).filter(Command.priority == CommandPriority.NORMAL).count()
-        high_priority = self.db.query(Command).filter(Command.priority == CommandPriority.HIGH).count()
-        critical_priority = self.db.query(Command).filter(Command.priority == CommandPriority.CRITICAL).count()
+        low_result = await self.db.execute(select(func.count()).select_from(Command).filter(Command.priority == CommandPriority.LOW))
+        low_priority = low_result.scalar()
+        
+        normal_result = await self.db.execute(select(func.count()).select_from(Command).filter(Command.priority == CommandPriority.NORMAL))
+        normal_priority = normal_result.scalar()
+        
+        high_result = await self.db.execute(select(func.count()).select_from(Command).filter(Command.priority == CommandPriority.HIGH))
+        high_priority = high_result.scalar()
+        
+        critical_result = await self.db.execute(select(func.count()).select_from(Command).filter(Command.priority == CommandPriority.CRITICAL))
+        critical_priority = critical_result.scalar()
         
         # Command type stats
         command_type_stats = {}
         for cmd_type in CommandType:
-            count = self.db.query(Command).filter(Command.command_type == cmd_type).count()
+            type_result = await self.db.execute(select(func.count()).select_from(Command).filter(Command.command_type == cmd_type))
+            count = type_result.scalar()
             command_type_stats[cmd_type.value] = count
         
         # Device stats
         device_stats = {}
-        device_counts = (
-            self.db.query(Command.device_id, func.count(Command.id))
+        device_counts_result = await self.db.execute(
+            select(Command.device_id, func.count(Command.id))
             .group_by(Command.device_id)
-            .all()
         )
+        device_counts = device_counts_result.all()
         for device_id, count in device_counts:
-            device = self.db.query(Device).filter(Device.id == device_id).first()
+            device_result = await self.db.execute(select(Device).filter(Device.id == device_id))
+            device = device_result.scalar_one_or_none()
             if device:
                 device_stats[device.name] = count
         
         # Recent activity
         now = datetime.utcnow()
-        commands_last_hour = self.db.query(Command).filter(
+        hour_result = await self.db.execute(select(func.count()).select_from(Command).filter(
             Command.created_at >= now - timedelta(hours=1)
-        ).count()
-        commands_last_day = self.db.query(Command).filter(
+        ))
+        commands_last_hour = hour_result.scalar()
+        
+        day_result = await self.db.execute(select(func.count()).select_from(Command).filter(
             Command.created_at >= now - timedelta(days=1)
-        ).count()
-        commands_last_week = self.db.query(Command).filter(
+        ))
+        commands_last_day = day_result.scalar()
+        
+        week_result = await self.db.execute(select(func.count()).select_from(Command).filter(
             Command.created_at >= now - timedelta(weeks=1)
-        ).count()
+        ))
+        commands_last_week = week_result.scalar()
         
         stats = {
             "total_commands": total_commands,
@@ -478,24 +532,26 @@ class CommandService:
         )
         
         self.db.add(queue_entry)
-        self.db.commit()
+        await self.db.commit()
         
         # Trigger queue processing
         # await process_command_queue.delay()  # Will be called by Celery beat
     
     async def _remove_from_queue(self, command: Command):
         """Remove command from execution queue."""
-        queue_entry = self.db.query(CommandQueue).filter(
+        result = await self.db.execute(select(CommandQueue).filter(
             CommandQueue.command_id == command.id
-        ).first()
+        ))
+        queue_entry = result.scalar_one_or_none()
         
         if queue_entry:
             queue_entry.is_active = False
-            self.db.commit()
+            await self.db.commit()
     
     async def _generate_raw_command(self, command: Command) -> str:
         """Generate raw command string based on protocol."""
-        device = self.db.query(Device).filter(Device.id == command.device_id).first()
+        result = await self.db.execute(select(Device).filter(Device.id == command.device_id))
+        device = result.scalar_one_or_none()
         if not device or not device.protocol:
             return ""
         

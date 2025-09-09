@@ -96,6 +96,9 @@ class Command(Base):
     # Command parameters
     parameters = Column(JSON, nullable=True)  # Command-specific parameters
     raw_command = Column(Text, nullable=True)  # Raw command string for protocols
+    attributes = Column(JSON, nullable=True)  # Dynamic attributes for extensibility
+    description = Column(String(512), nullable=True)  # Command description
+    text_channel = Column(Boolean, default=False, nullable=False)  # SMS channel support
     
     # Execution tracking
     sent_at = Column(DateTime(timezone=True), nullable=True)
@@ -148,6 +151,57 @@ class Command(Base):
             CommandStatus.EXPIRED
         ]
     
+    def get_string_attribute(self, key: str, default: str = None) -> str:
+        """Get string attribute from dynamic attributes."""
+        if not self.attributes:
+            return default
+        value = self.attributes.get(key, default)
+        return str(value) if value is not None else default
+    
+    def get_double_attribute(self, key: str, default: float = None) -> float:
+        """Get double/float attribute from dynamic attributes."""
+        if not self.attributes:
+            return default
+        value = self.attributes.get(key, default)
+        try:
+            return float(value) if value is not None else default
+        except (ValueError, TypeError):
+            return default
+    
+    def get_boolean_attribute(self, key: str, default: bool = None) -> bool:
+        """Get boolean attribute from dynamic attributes."""
+        if not self.attributes:
+            return default
+        value = self.attributes.get(key, default)
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            return value.lower() in ('true', '1', 'yes', 'on')
+        if isinstance(value, (int, float)):
+            return bool(value)
+        return default
+    
+    def get_integer_attribute(self, key: str, default: int = None) -> int:
+        """Get integer attribute from dynamic attributes."""
+        if not self.attributes:
+            return default
+        value = self.attributes.get(key, default)
+        try:
+            return int(value) if value is not None else default
+        except (ValueError, TypeError):
+            return default
+    
+    def set_attribute(self, key: str, value: Any) -> None:
+        """Set attribute in dynamic attributes."""
+        if self.attributes is None:
+            self.attributes = {}
+        self.attributes[key] = value
+    
+    def remove_attribute(self, key: str) -> None:
+        """Remove attribute from dynamic attributes."""
+        if self.attributes and key in self.attributes:
+            del self.attributes[key]
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convert command to dictionary."""
         return {
@@ -159,6 +213,9 @@ class Command(Base):
             "status": self.status,
             "parameters": self.parameters,
             "raw_command": self.raw_command,
+            "attributes": self.attributes,
+            "description": self.description,
+            "text_channel": self.text_channel,
             "sent_at": self.sent_at.isoformat() if self.sent_at else None,
             "delivered_at": self.delivered_at.isoformat() if self.delivered_at else None,
             "executed_at": self.executed_at.isoformat() if self.executed_at else None,

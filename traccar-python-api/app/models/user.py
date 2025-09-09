@@ -43,6 +43,8 @@ class User(Base):
     reports = relationship("Report", back_populates="user", cascade="all, delete-orphan")
     report_templates = relationship("ReportTemplate", back_populates="user", cascade="all, delete-orphan")
     commands = relationship("Command", back_populates="user", cascade="all, delete-orphan")
+    command_templates = relationship("CommandTemplate", back_populates="user", cascade="all, delete-orphan")
+    scheduled_commands = relationship("ScheduledCommand", back_populates="user", cascade="all, delete-orphan")
     
     # Permission relationships (many-to-many)
     device_permissions = relationship(

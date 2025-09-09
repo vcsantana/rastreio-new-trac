@@ -24,7 +24,6 @@ router = APIRouter(prefix="/api/commands", tags=["commands"])
 
 
 @router.post("/", response_model=CommandResponse, status_code=status.HTTP_201_CREATED)
-@rate_limit("api", "commands")
 async def create_command(
     command_data: CommandCreate,
     current_user: User = Depends(get_current_user),

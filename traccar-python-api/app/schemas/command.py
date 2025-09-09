@@ -17,6 +17,9 @@ class CommandCreate(BaseModel):
     command_type: CommandType = Field(..., description="Type of command to send")
     priority: CommandPriority = Field(CommandPriority.NORMAL, description="Command priority")
     parameters: Optional[Dict[str, Any]] = Field(None, description="Command-specific parameters")
+    attributes: Optional[Dict[str, Any]] = Field(None, description="Dynamic attributes for extensibility")
+    description: Optional[str] = Field(None, max_length=512, description="Command description")
+    text_channel: bool = Field(False, description="Use SMS channel for command")
     expires_at: Optional[datetime] = Field(None, description="Command expiration time")
     max_retries: int = Field(3, ge=0, le=10, description="Maximum number of retries")
     
@@ -59,6 +62,9 @@ class CommandUpdate(BaseModel):
     response: Optional[str] = Field(None, description="Device response")
     error_message: Optional[str] = Field(None, description="Error message if failed")
     retry_count: Optional[int] = Field(None, ge=0, description="Number of retries attempted")
+    attributes: Optional[Dict[str, Any]] = Field(None, description="Dynamic attributes for extensibility")
+    description: Optional[str] = Field(None, max_length=512, description="Command description")
+    text_channel: Optional[bool] = Field(None, description="Use SMS channel for command")
 
 
 class CommandResponse(BaseModel):
@@ -72,6 +78,9 @@ class CommandResponse(BaseModel):
     status: CommandStatus
     parameters: Optional[Dict[str, Any]]
     raw_command: Optional[str]
+    attributes: Optional[Dict[str, Any]]
+    description: Optional[str]
+    text_channel: bool
     sent_at: Optional[datetime]
     delivered_at: Optional[datetime]
     executed_at: Optional[datetime]
@@ -178,6 +187,9 @@ class CommandBulkCreate(BaseModel):
     command_type: CommandType = Field(..., description="Type of command to send")
     priority: CommandPriority = Field(CommandPriority.NORMAL, description="Command priority")
     parameters: Optional[Dict[str, Any]] = Field(None, description="Command-specific parameters")
+    attributes: Optional[Dict[str, Any]] = Field(None, description="Dynamic attributes for extensibility")
+    description: Optional[str] = Field(None, max_length=512, description="Command description")
+    text_channel: bool = Field(False, description="Use SMS channel for command")
     expires_at: Optional[datetime] = Field(None, description="Command expiration time")
     max_retries: int = Field(3, ge=0, le=10, description="Maximum number of retries")
 

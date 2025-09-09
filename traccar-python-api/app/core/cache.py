@@ -102,6 +102,22 @@ class CacheManager:
             logger.error("Error deleting cache key", key=key, error=str(e))
             return False
     
+    async def delete_pattern(self, pattern: str) -> int:
+        """Delete keys matching pattern"""
+        if not self.redis:
+            return 0
+        
+        try:
+            keys = await self.redis.keys(pattern)
+            if keys:
+                result = await self.redis.delete(*keys)
+                logger.info("Deleted cache keys", pattern=pattern, count=result)
+                return result
+            return 0
+        except Exception as e:
+            logger.error("Error deleting cache pattern", pattern=pattern, error=str(e))
+            return 0
+    
     async def exists(self, key: str) -> bool:
         """Check if key exists in cache"""
         if not self.redis:
