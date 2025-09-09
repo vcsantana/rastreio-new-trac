@@ -4,8 +4,8 @@ Geofences API endpoints
 from datetime import datetime
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, desc, func
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import and_, or_, desc, func, select
 
 from app.database import get_db
 from app.models import Geofence, Event, User
@@ -20,6 +20,9 @@ from app.schemas.geofence import (
     EXAMPLE_GEOMETRIES
 )
 from app.api.auth import get_current_user
+from app.services.geofence_cache_service import geofence_cache_service
+from app.services.geofence_detection_service import GeofenceDetectionService
+from app.services.geofence_event_service import GeofenceEventService
 
 router = APIRouter(prefix="/geofences", tags=["geofences"])
 
@@ -31,13 +34,14 @@ async def get_geofences(
     search: Optional[str] = Query(None, description="Search in name and description"),
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(50, ge=1, le=1000, description="Page size"),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Get geofences with optional filtering and pagination"""
     
     # Build query
-    query = db.query(Geofence)
+    query = select(Geofence)
+    count_query = select(func.count(Geofence.id))
     
     # Apply filters
     filters = []
@@ -59,13 +63,21 @@ async def get_geofences(
         filters.append(search_filter)
     
     if filters:
-        query = query.filter(and_(*filters))
+        filter_condition = and_(*filters)
+        query = query.where(filter_condition)
+        count_query = count_query.where(filter_condition)
     
     # Get total count
-    total = query.count()
+    total_result = await db.execute(count_query)
+    total = total_result.scalar()
     
     # Apply pagination and ordering
-    geofences = query.order_by(desc(Geofence.created_at)).offset((page - 1) * size).limit(size).all()
+    geofences_result = await db.execute(
+        query.order_by(desc(Geofence.created_at))
+        .offset((page - 1) * size)
+        .limit(size)
+    )
+    geofences = geofences_result.scalars().all()
     
     # Transform to response format
     geofence_responses = []
@@ -86,12 +98,13 @@ async def get_geofences(
 @router.get("/{geofence_id}", response_model=GeofenceResponse)
 async def get_geofence(
     geofence_id: int,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Get a specific geofence by ID"""
     
-    geofence = db.query(Geofence).filter(Geofence.id == geofence_id).first()
+    result = await db.execute(select(Geofence).where(Geofence.id == geofence_id))
+    geofence = result.scalar_one_or_none()
     
     if not geofence:
         raise HTTPException(status_code=404, detail="Geofence not found")
@@ -102,13 +115,14 @@ async def get_geofence(
 @router.post("/", response_model=GeofenceResponse)
 async def create_geofence(
     geofence_data: GeofenceCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Create a new geofence"""
     
     # Check if name already exists
-    existing = db.query(Geofence).filter(Geofence.name == geofence_data.name).first()
+    result = await db.execute(select(Geofence).where(Geofence.name == geofence_data.name))
+    existing = result.scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=400, detail="Geofence with this name already exists")
     
@@ -127,8 +141,11 @@ async def create_geofence(
     geofence.area = geofence.calculate_area()
     
     db.add(geofence)
-    db.commit()
-    db.refresh(geofence)
+    await db.commit()
+    await db.refresh(geofence)
+    
+    # Invalidate geofence cache
+    await geofence_cache_service.invalidate_geofence_cache(geofence.id)
     
     return GeofenceResponse.model_validate(geofence)
 
@@ -137,21 +154,25 @@ async def create_geofence(
 async def update_geofence(
     geofence_id: int,
     geofence_data: GeofenceUpdate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Update a geofence"""
     
-    geofence = db.query(Geofence).filter(Geofence.id == geofence_id).first()
+    geofence = result = await db.execute(select(Geofence).where(Geofence.id == geofence_id))
+    Geofence_obj = result.scalar_one_or_none()
     if not geofence:
         raise HTTPException(status_code=404, detail="Geofence not found")
     
     # Check name uniqueness if name is being updated
     if geofence_data.name and geofence_data.name != geofence.name:
-        existing = db.query(Geofence).filter(
-            Geofence.name == geofence_data.name,
-            Geofence.id != geofence_id
-        ).first()
+        result = await db.execute(select(Geofence).where(
+            and_(
+                Geofence.name == geofence_data.name,
+                Geofence.id != geofence_id
+            )
+        ))
+        existing = result.scalar_one_or_none()
         if existing:
             raise HTTPException(status_code=400, detail="Geofence with this name already exists")
     
@@ -173,8 +194,11 @@ async def update_geofence(
     if geofence_data.attributes is not None:
         geofence.attributes = geofence_data.attributes
     
-    db.commit()
+    await db.commit()
     db.refresh(geofence)
+    
+    # Invalidate geofence cache
+    await geofence_cache_service.invalidate_geofence_cache(geofence.id)
     
     return GeofenceResponse.model_validate(geofence)
 
@@ -182,17 +206,19 @@ async def update_geofence(
 @router.delete("/{geofence_id}")
 async def delete_geofence(
     geofence_id: int,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Delete a geofence"""
     
-    geofence = db.query(Geofence).filter(Geofence.id == geofence_id).first()
+    geofence = result = await db.execute(select(Geofence).where(Geofence.id == geofence_id))
+    Geofence_obj = result.scalar_one_or_none()
     if not geofence:
         raise HTTPException(status_code=404, detail="Geofence not found")
     
     # Check if geofence has associated events
-    event_count = db.query(Event).filter(Event.geofence_id == geofence_id).count()
+    event_count = result = await db.execute(select(func.count(Event.id)).where(Event.geofence_id == geofence_id))
+    count = result.scalar()
     if event_count > 0:
         raise HTTPException(
             status_code=400, 
@@ -200,23 +226,28 @@ async def delete_geofence(
         )
     
     db.delete(geofence)
-    db.commit()
+    await db.commit()
+    
+    # Invalidate geofence cache
+    await geofence_cache_service.invalidate_geofence_cache(geofence_id)
     
     return {"message": "Geofence deleted successfully"}
 
 
 @router.get("/stats/summary", response_model=GeofenceStatsResponse)
 async def get_geofence_stats(
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Get geofence statistics"""
     
     # Total geofences
-    total_geofences = db.query(Geofence).count()
+    total_geofences = result = await db.execute(select(func.count(Geofence.id)))
+    count = result.scalar()
     
     # Active vs disabled
-    active_geofences = db.query(Geofence).filter(Geofence.disabled == False).count()
+    active_geofences = result = await db.execute(select(func.count(Geofence.id)).where(Geofence.disabled == False))
+    count = result.scalar()
     disabled_geofences = total_geofences - active_geofences
     
     # Geofences by type
@@ -230,7 +261,8 @@ async def get_geofence_stats(
         geofences_by_type[type_name] = count
     
     # Total area
-    total_area = db.query(func.sum(Geofence.area)).scalar() or 0.0
+    total_area = result = await db.execute(select(func.sum(Geofence.area)))
+    scalar = result.scalar() or 0.0
     
     return GeofenceStatsResponse(
         total_geofences=total_geofences,
@@ -244,13 +276,14 @@ async def get_geofence_stats(
 @router.post("/test", response_model=List[GeofenceTestResponse])
 async def test_geofences(
     test_request: GeofenceTestRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Test if a point is inside any geofences"""
     
     # Get all active geofences
-    geofences = db.query(Geofence).filter(Geofence.disabled == False).all()
+    geofences = result = await db.execute(select(Geofence).where(Geofence.disabled == False))
+    objects = result.scalars().all()
     
     results = []
     for geofence in geofences:
@@ -285,6 +318,112 @@ async def get_example_geometries():
     return {
         "examples": EXAMPLE_GEOMETRIES,
         "description": "Example GeoJSON geometries for creating geofences"
+    }
+
+
+@router.get("/events/")
+async def get_geofence_events(
+    device_id: Optional[int] = Query(None, description="Filter by device ID"),
+    geofence_id: Optional[int] = Query(None, description="Filter by geofence ID"),
+    event_type: Optional[str] = Query(None, description="Filter by event type (geofenceEnter, geofenceExit)"),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of events to return"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get geofence events with filtering options"""
+    
+    event_service = GeofenceEventService(db)
+    events = await event_service.get_geofence_events(
+        device_id=device_id,
+        geofence_id=geofence_id,
+        event_type=event_type,
+        limit=limit
+    )
+    
+    return {
+        "events": events,
+        "total": len(events),
+        "filters": {
+            "device_id": device_id,
+            "geofence_id": geofence_id,
+            "event_type": event_type
+        }
+    }
+
+
+@router.get("/events/stats")
+async def get_geofence_event_stats(
+    device_id: Optional[int] = Query(None, description="Filter by device ID"),
+    geofence_id: Optional[int] = Query(None, description="Filter by geofence ID"),
+    days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get geofence event statistics"""
+    
+    event_service = GeofenceEventService(db)
+    stats = await event_service.get_geofence_event_stats(
+        device_id=device_id,
+        geofence_id=geofence_id,
+        days=days
+    )
+    
+    return stats
+
+
+@router.post("/detect")
+async def detect_geofences_for_point(
+    latitude: float = Query(..., ge=-90, le=90, description="Latitude to test"),
+    longitude: float = Query(..., ge=-180, le=180, description="Longitude to test"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Detect which geofences contain a specific point"""
+    
+    detection_service = GeofenceDetectionService(db)
+    geofences = detection_service.get_geofences_for_point(latitude, longitude)
+    
+    return {
+        "latitude": latitude,
+        "longitude": longitude,
+        "geofences": geofences,
+        "count": len(geofences)
+    }
+
+
+@router.post("/cache/warm")
+async def warm_geofence_cache(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Warm the geofence cache with frequently accessed data"""
+    
+    await geofence_cache_service.warm_geofence_cache(db)
+    
+    return {"message": "Geofence cache warmed successfully"}
+
+
+@router.get("/cache/stats")
+async def get_geofence_cache_stats(
+    current_user: User = Depends(get_current_user)
+):
+    """Get geofence cache statistics"""
+    
+    stats = await geofence_cache_service.get_cache_stats()
+    return stats
+
+
+@router.delete("/cache/clear")
+async def clear_geofence_cache(
+    geofence_id: Optional[int] = Query(None, description="Specific geofence ID to clear, or all if not provided"),
+    current_user: User = Depends(get_current_user)
+):
+    """Clear geofence cache entries"""
+    
+    await geofence_cache_service.invalidate_geofence_cache(geofence_id)
+    
+    return {
+        "message": f"Geofence cache cleared for {'all geofences' if geofence_id is None else f'geofence {geofence_id}'}"
     }
 
 

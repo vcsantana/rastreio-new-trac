@@ -183,6 +183,8 @@ async def create_position(
     current_user: User = Depends(get_current_user)
 ):
     """Create a new position and broadcast via WebSocket"""
+    from app.services.event_handler import EventHandler
+    
     cache_service = await get_position_cache_service()
     
     # Verify device exists and user has access
@@ -200,6 +202,40 @@ async def create_position(
     db.add(position)
     await db.commit()
     await db.refresh(position)
+    
+    # Process automatic events based on position
+    try:
+        # Convert AsyncSession to regular Session for event handler
+        # Note: This is a workaround - in production, you'd want to make EventHandler async
+        from sqlalchemy.orm import sessionmaker
+        from app.database import engine
+        from app.services.geofence_detection_service import GeofenceDetectionService
+        
+        SessionLocal = sessionmaker(bind=engine)
+        sync_db = SessionLocal()
+        
+        try:
+            # Process geofence detection
+            geofence_detector = GeofenceDetectionService(sync_db)
+            geofence_events = await geofence_detector.process_position_for_geofences(position, device)
+            
+            # Process other automatic events
+            event_handler = EventHandler(sync_db)
+            other_events = event_handler.process_position(position)
+            
+            # Combine all generated events
+            all_events = geofence_events + other_events
+            
+            # Broadcast generated events via WebSocket
+            for event in all_events:
+                await websocket_service.broadcast_event_update(event, device)
+                
+        finally:
+            sync_db.close()
+            
+    except Exception as e:
+        # Log error but don't fail position creation
+        print(f"Error processing automatic events: {e}")
     
     # Cache the new position
     await cache_service.set_cached_position(position)

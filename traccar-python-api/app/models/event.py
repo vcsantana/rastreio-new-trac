@@ -1,8 +1,10 @@
 """
 Event model
 """
+import json
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any, Union
+from functools import lru_cache
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -144,6 +146,110 @@ class Event(Base):
     def is_motion_event(self) -> bool:
         """Check if this is a motion-related event"""
         return self.type in {self.TYPE_DEVICE_MOVING, self.TYPE_DEVICE_STOPPED}
+
+    # Cache for parsed attributes
+    _attributes_cache = None
+    _attributes_cache_timestamp = None
+
+    def _get_cached_attributes(self) -> Dict[str, Any]:
+        """Get cached attributes or parse and cache them"""
+        if not self.attributes:
+            return {}
+        
+        # Check if we have a valid cache
+        if (self._attributes_cache is not None and 
+            self._attributes_cache_timestamp == self.attributes):
+            return self._attributes_cache
+        
+        # Parse and cache attributes
+        try:
+            self._attributes_cache = json.loads(self.attributes)
+            self._attributes_cache_timestamp = self.attributes
+            return self._attributes_cache
+        except (json.JSONDecodeError, TypeError):
+            self._attributes_cache = {}
+            self._attributes_cache_timestamp = self.attributes
+            return {}
+
+    def _invalidate_attributes_cache(self):
+        """Invalidate attributes cache"""
+        self._attributes_cache = None
+        self._attributes_cache_timestamp = None
+
+    # Typed attribute access methods (matching Java ExtendedModel interface)
+    def get_string_attribute(self, key: str, default: str = None) -> Optional[str]:
+        """Get string attribute value"""
+        attrs = self._get_cached_attributes()
+        value = attrs.get(key, default)
+        return str(value) if value is not None else default
+
+    def get_double_attribute(self, key: str, default: float = None) -> Optional[float]:
+        """Get double/float attribute value"""
+        attrs = self._get_cached_attributes()
+        value = attrs.get(key, default)
+        try:
+            return float(value) if value is not None else default
+        except (TypeError, ValueError):
+            return default
+
+    def get_boolean_attribute(self, key: str, default: bool = False) -> bool:
+        """Get boolean attribute value"""
+        attrs = self._get_cached_attributes()
+        value = attrs.get(key, default)
+        return bool(value) if value is not None else default
+
+    def get_integer_attribute(self, key: str, default: int = None) -> Optional[int]:
+        """Get integer attribute value"""
+        attrs = self._get_cached_attributes()
+        value = attrs.get(key, default)
+        try:
+            return int(value) if value is not None else default
+        except (TypeError, ValueError):
+            return default
+
+    def get_long_attribute(self, key: str, default: int = None) -> Optional[int]:
+        """Get long attribute value (same as integer in Python)"""
+        return self.get_integer_attribute(key, default)
+
+    def get_date_attribute(self, key: str, default: datetime = None) -> Optional[datetime]:
+        """Get date attribute value"""
+        attrs = self._get_cached_attributes()
+        value = attrs.get(key, default)
+        if value is None:
+            return default
+        try:
+            if isinstance(value, str):
+                # Try to parse ISO format
+                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+            elif isinstance(value, (int, float)):
+                # Unix timestamp
+                return datetime.fromtimestamp(value)
+            return default
+        except (TypeError, ValueError):
+            return default
+
+    def set_attribute(self, key: str, value: Any) -> None:
+        """Set attribute value"""
+        attrs = self._get_cached_attributes()
+        attrs[key] = value
+        self.attributes = json.dumps(attrs)
+        self._invalidate_attributes_cache()
+
+    def remove_attribute(self, key: str) -> None:
+        """Remove attribute"""
+        attrs = self._get_cached_attributes()
+        attrs.pop(key, None)
+        self.attributes = json.dumps(attrs) if attrs else None
+        self._invalidate_attributes_cache()
+
+    def get_attributes_dict(self) -> Dict[str, Any]:
+        """Get all attributes as dictionary"""
+        return self._get_cached_attributes()
+
+    def has_attribute(self, key: str) -> bool:
+        """Check if attribute exists"""
+        attrs = self._get_cached_attributes()
+        return key in attrs
 
     def __repr__(self):
         return f"<Event(id={self.id}, type='{self.type}', device_id={self.device_id}, time={self.event_time})>"

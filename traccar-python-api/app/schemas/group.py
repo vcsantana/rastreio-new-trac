@@ -2,7 +2,7 @@
 Group schemas
 """
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 class GroupBase(BaseModel):
@@ -11,6 +11,7 @@ class GroupBase(BaseModel):
     disabled: Optional[bool] = False
     person_id: Optional[int] = None
     parent_id: Optional[int] = None
+    attributes: Optional[Dict[str, Any]] = None
 
 class GroupCreate(GroupBase):
     pass
@@ -21,6 +22,7 @@ class GroupUpdate(BaseModel):
     disabled: Optional[bool] = None
     person_id: Optional[int] = None
     parent_id: Optional[int] = None
+    attributes: Optional[Dict[str, Any]] = None
 
 class GroupResponse(GroupBase):
     id: int

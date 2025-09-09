@@ -9,8 +9,11 @@ from datetime import datetime
 class UserBase(BaseModel):
     email: EmailStr
     name: str
+    login: Optional[str] = None  # Login único (diferente do email)
     is_active: bool = True
     is_admin: bool = False
+    readonly: Optional[bool] = False  # Usuário somente leitura
+    temporary: Optional[bool] = False  # Usuário temporário
     attributes: Optional[Dict[str, Any]] = None
     phone: Optional[str] = None
     map: Optional[str] = None
@@ -26,6 +29,8 @@ class UserBase(BaseModel):
     disable_reports: Optional[bool] = False
     fixed_email: Optional[bool] = False
     poi_layer: Optional[str] = None
+    # 2FA fields
+    totp_enabled: Optional[bool] = False
 
 
 class UserCreate(UserBase):
@@ -41,9 +46,12 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     name: Optional[str] = None
+    login: Optional[str] = None
     password: Optional[str] = None
     is_active: Optional[bool] = None
     is_admin: Optional[bool] = None
+    readonly: Optional[bool] = None
+    temporary: Optional[bool] = None
     attributes: Optional[Dict[str, Any]] = None
     phone: Optional[str] = None
     map: Optional[str] = None
@@ -59,6 +67,7 @@ class UserUpdate(BaseModel):
     disable_reports: Optional[bool] = None
     fixed_email: Optional[bool] = None
     poi_layer: Optional[str] = None
+    totp_enabled: Optional[bool] = None
     
     @validator('password')
     def validate_password(cls, v):
@@ -102,3 +111,23 @@ class UserPermissionResponse(BaseModel):
     group_permissions: List[Dict[str, Any]] = []
     managed_users: List[Dict[str, Any]] = []
     managers: List[Dict[str, Any]] = []
+
+
+# 2FA Schemas
+class TOTPGenerateResponse(BaseModel):
+    secret_key: str
+    qr_code_url: str
+    backup_codes: List[str]
+
+
+class TOTPVerifyRequest(BaseModel):
+    totp_code: str
+
+
+class TOTPEnableRequest(BaseModel):
+    secret_key: str
+    totp_code: str
+
+
+class TOTPDisableRequest(BaseModel):
+    totp_code: str

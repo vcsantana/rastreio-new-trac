@@ -15,9 +15,11 @@ from app.models.group import Group
 from app.models.user_permission import user_device_permissions, user_group_permissions, user_managed_users
 from app.schemas.user import (
     UserCreate, UserUpdate, UserResponse, UserStats, UserFilter,
-    UserPermissionUpdate, UserPermissionResponse
+    UserPermissionUpdate, UserPermissionResponse,
+    TOTPGenerateResponse, TOTPVerifyRequest, TOTPEnableRequest, TOTPDisableRequest
 )
 from app.api.auth import get_current_user, get_password_hash
+from app.services.totp_service import TOTPService
 
 router = APIRouter()
 
@@ -150,14 +152,26 @@ async def create_user(
             detail="User with this email already exists"
         )
     
+    # Check if login already exists (if provided)
+    if user_create.login:
+        login_result = await db.execute(select(User).where(User.login == user_create.login))
+        if login_result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User with this login already exists"
+            )
+    
     # Create new user
     hashed_password = get_password_hash(user_create.password)
     db_user = User(
         email=user_create.email,
         name=user_create.name,
+        login=user_create.login,
         password_hash=hashed_password,
         is_active=user_create.is_active,
         is_admin=user_create.is_admin,
+        readonly=user_create.readonly,
+        temporary=user_create.temporary,
         phone=user_create.phone,
         map=user_create.map,
         latitude=user_create.latitude,
@@ -172,6 +186,7 @@ async def create_user(
         disable_reports=user_create.disable_reports,
         fixed_email=user_create.fixed_email,
         poi_layer=user_create.poi_layer,
+        totp_enabled=user_create.totp_enabled,
         attributes=json.dumps(user_create.attributes) if user_create.attributes else None
     )
     
@@ -390,5 +405,110 @@ async def update_user_permissions(
     await db.commit()
     
     return {"message": "User permissions updated successfully"}
+
+
+# 2FA Endpoints
+@router.post("/totp/generate", response_model=TOTPGenerateResponse)
+async def generate_totp_key(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Generate TOTP secret key and QR code for 2FA setup"""
+    if current_user.totp_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="2FA is already enabled for this user"
+        )
+    
+    secret_key, qr_code_url, backup_codes = TOTPService.generate_totp_setup(
+        user_email=current_user.email,
+        issuer="Traccar"
+    )
+    
+    return TOTPGenerateResponse(
+        secret_key=secret_key,
+        qr_code_url=qr_code_url,
+        backup_codes=backup_codes
+    )
+
+
+@router.post("/totp/verify")
+async def verify_totp_code(
+    totp_request: TOTPVerifyRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Verify TOTP code (for testing during setup)"""
+    if not current_user.totp_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No TOTP key found for this user"
+        )
+    
+    is_valid = TOTPService.verify_totp_code(current_user.totp_key, totp_request.totp_code)
+    
+    return {"valid": is_valid}
+
+
+@router.post("/totp/enable")
+async def enable_totp(
+    totp_request: TOTPEnableRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Enable 2FA for the current user"""
+    if current_user.totp_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="2FA is already enabled for this user"
+        )
+    
+    # Verify the TOTP code with the provided secret
+    is_valid = TOTPService.verify_totp_code(totp_request.secret_key, totp_request.totp_code)
+    
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid TOTP code"
+        )
+    
+    # Enable 2FA
+    current_user.totp_key = totp_request.secret_key
+    current_user.totp_enabled = True
+    
+    await db.commit()
+    
+    return {"message": "2FA enabled successfully"}
+
+
+@router.post("/totp/disable")
+async def disable_totp(
+    totp_request: TOTPDisableRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Disable 2FA for the current user"""
+    if not current_user.totp_enabled or not current_user.totp_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="2FA is not enabled for this user"
+        )
+    
+    # Verify the TOTP code
+    is_valid = TOTPService.verify_totp_code(current_user.totp_key, totp_request.totp_code)
+    
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid TOTP code"
+        )
+    
+    # Disable 2FA
+    current_user.totp_key = None
+    current_user.totp_enabled = False
+    
+    await db.commit()
+    
+    return {"message": "2FA disabled successfully"}
 
 
