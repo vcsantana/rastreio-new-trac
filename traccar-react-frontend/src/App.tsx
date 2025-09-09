@@ -16,12 +16,14 @@ import { Layout } from './components/common/Layout';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 
-// Lazy load pages for better performance
-const Dashboard = React.lazy(() => import('./pages/Dashboard'));
+// Import Dashboard directly to avoid lazy loading issues
+import Dashboard from './pages/Dashboard';
 const Devices = React.lazy(() => import('./pages/Devices'));
 const Groups = React.lazy(() => import('./pages/Groups'));
 const Persons = React.lazy(() => import('./pages/Persons'));
 const Commands = React.lazy(() => import('./pages/Commands'));
+const Geofences = React.lazy(() => import('./pages/Geofences'));
+const Events = React.lazy(() => import('./pages/Events'));
 const Reports = React.lazy(() => import('./pages/ReportsPage'));
 const Settings = React.lazy(() => import('./pages/Settings'));
 const LogsViewer = React.lazy(() => import('./components/LogsViewer'));
@@ -45,7 +47,18 @@ function App() {
                       {/* Public routes */}
                       <Route path="/login" element={<Login />} />
                       
-                      {/* Protected routes */}
+                      {/* Dashboard route - standalone without Layout */}
+                      <Route 
+                        path="/dashboard" 
+                        element={
+                          <ProtectedRoute>
+                            <Dashboard />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route index element={<Navigate to="/dashboard" replace />} />
+                      
+                      {/* Protected routes with Layout */}
                       <Route
                         path="/"
                         element={
@@ -54,12 +67,12 @@ function App() {
                           </ProtectedRoute>
                         }
                       >
-                        <Route index element={<Navigate to="/dashboard" replace />} />
-                        <Route path="dashboard" element={<Dashboard />} />
                         <Route path="devices" element={<Devices />} />
                         <Route path="groups" element={<Groups />} />
                         <Route path="persons" element={<Persons />} />
                         <Route path="commands" element={<Commands />} />
+                        <Route path="geofences" element={<Geofences />} />
+                        <Route path="events" element={<Events />} />
                         
                         {/* Admin-only routes */}
                         <Route path="reports" element={

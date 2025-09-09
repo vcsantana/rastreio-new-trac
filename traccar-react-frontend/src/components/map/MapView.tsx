@@ -8,7 +8,13 @@ import DeviceInfoCard from './DeviceInfoCard';
 import RoutePath from './RoutePath';
 import RouteControls from './RouteControls';
 import ReplayMarker from './ReplayMarker';
+import GeofenceLayers from './GeofenceLayers';
+import EventMarkers from './EventMarkers';
 import { useDeviceHistory } from '../../hooks/useDeviceHistory';
+import { useGeofences } from '../../hooks/useGeofences';
+import { useEvents } from '../../hooks/useEvents';
+import { Geofence } from '../../types/geofences';
+import { Event } from '../../types/events';
 
 interface Position {
   id: number;
@@ -46,6 +52,12 @@ interface MapViewProps {
   style?: React.CSSProperties;
   currentReplayPosition?: Position | null;
   isReplaying?: boolean;
+  showGeofences?: boolean;
+  selectedGeofenceId?: number;
+  onGeofenceSelect?: (geofence: Geofence) => void;
+  showEvents?: boolean;
+  selectedEventId?: number;
+  onEventSelect?: (event: Event) => void;
 }
 
 // Map style configurations
@@ -103,13 +115,25 @@ const MapView: React.FC<MapViewProps> = ({
   onDeviceSelect,
   style = { width: '100%', height: '400px' },
   currentReplayPosition,
-  isReplaying = false
+  isReplaying = false,
+  showGeofences = true,
+  selectedGeofenceId,
+  onGeofenceSelect,
+  showEvents = false,
+  selectedEventId,
+  onEventSelect,
 }) => {
   console.log('🗺️ MapView render - positions:', positions?.length || 0, 'devices:', devices?.length || 0, 'selectedDeviceId:', selectedDeviceId, 'isReplaying:', isReplaying);
   console.log('🗺️ MapView props:', { positions, devices, selectedDeviceId, currentReplayPosition, isReplaying });
   const [map, setMap] = useState<maplibregl.Map | null>(null);
   const [mapStyle, setMapStyle] = useState<'streets' | 'satellite' | 'hybrid'>('streets');
   const [showTraffic, setShowTraffic] = useState(false);
+  
+  // Fetch geofences for map display
+  const { geofences, fetchGeofences } = useGeofences();
+  
+  // Fetch events for map display
+  const { events, eventTypeInfo, fetchEvents } = useEvents();
   
   // Route controls state
   const [showRoutes, setShowRoutes] = useState(false);
@@ -120,12 +144,26 @@ const MapView: React.FC<MapViewProps> = ({
   const [fromTime, setFromTime] = useState<Date | null>(null);
   const [toTime, setToTime] = useState<Date | null>(null);
   
+  // Fetch geofences when component mounts
+  useEffect(() => {
+    if (showGeofences) {
+      fetchGeofences();
+    }
+  }, [showGeofences, fetchGeofences]);
+
+  // Fetch events when component mounts
+  useEffect(() => {
+    if (showEvents) {
+      fetchEvents({ size: 100 }); // Fetch recent events for map display
+    }
+  }, [showEvents, fetchEvents]);
+
   // Auto-enable routes during replay
   useEffect(() => {
-    if (isReplaying && selectedDeviceId && positions.length > 1) {
+    if (isReplaying && selectedDeviceId && positions && positions.length > 1) {
       setShowRoutes(true);
     }
-  }, [isReplaying, selectedDeviceId, positions.length]);
+  }, [isReplaying, selectedDeviceId, positions]);
   
   // Move camera to current replay position
   useEffect(() => {
@@ -164,7 +202,7 @@ const MapView: React.FC<MapViewProps> = ({
   
   // Use replay positions if available, otherwise use history positions
   const routePositions = useMemo(() => {
-    if (isReplaying && positions.length > 0) {
+    if (isReplaying && positions && positions.length > 0) {
       // Convert positions to the format expected by RoutePath
       return positions.map(pos => ({
         ...pos,
@@ -185,7 +223,7 @@ const MapView: React.FC<MapViewProps> = ({
       });
       
       // Only fit bounds if we have multiple positions or if bounds are reasonable
-      if (positions.length > 1 || !bounds.isEmpty()) {
+      if (positions && positions.length > 1 || !bounds.isEmpty()) {
         mapInstance.fitBounds(bounds, {
           padding: 50,
           maxZoom: 15
@@ -229,6 +267,21 @@ const MapView: React.FC<MapViewProps> = ({
     }
   }, [onDeviceSelect]);
 
+  const handleEventClick = useCallback((event: Event) => {
+    if (onEventSelect) {
+      onEventSelect(event);
+    }
+    
+    // Fly to the event location
+    if (event.position_data && map) {
+      map.flyTo({
+        center: [event.position_data.longitude, event.position_data.latitude],
+        zoom: Math.max(map.getZoom(), 15),
+        duration: 1500
+      });
+    }
+  }, [onEventSelect, map]);
+
   // Route control handlers
   const handleApplyFilters = useCallback(() => {
     refetchHistory();
@@ -251,7 +304,7 @@ const MapView: React.FC<MapViewProps> = ({
         />
         
         {/* Route path for selected device */}
-        {showRoutes && selectedDeviceId && routePositions.length > 1 && (
+        {showRoutes && selectedDeviceId && routePositions && routePositions.length > 1 && (
           <RoutePath
             map={map}
             positions={routePositions}
@@ -268,6 +321,29 @@ const MapView: React.FC<MapViewProps> = ({
             map={map}
             position={currentReplayPosition}
             deviceName={selectedDevice?.name}
+          />
+        )}
+        
+        {/* Geofence layers */}
+        {showGeofences && (
+          <GeofenceLayers
+            map={map}
+            geofences={geofences}
+            selectedGeofenceId={selectedGeofenceId}
+            onGeofenceClick={onGeofenceSelect}
+            showGeofences={showGeofences}
+          />
+        )}
+        
+        {/* Event markers */}
+        {showEvents && (
+          <EventMarkers
+            events={events}
+            eventTypeInfo={eventTypeInfo}
+            onEventSelect={handleEventClick}
+            showPopup={true}
+            clusterEvents={true}
+            map={map}
           />
         )}
       </MapContainer>

@@ -1,84 +1,108 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
-  Grid,
-  Card,
-  CardContent,
-  Typography,
+  Paper,
   useTheme,
   Alert,
   CircularProgress,
   Button,
+  useMediaQuery,
+  Typography,
 } from '@mui/material';
-import {
-  DeviceHub as DevicesIcon,
-  LocationOn as LocationIcon,
-  Speed as SpeedIcon,
-  Timeline as TimelineIcon,
-} from '@mui/icons-material';
 import MapView from '../components/map/MapView';
+import MainToolbar from '../components/main/MainToolbar';
+import DeviceList from '../components/main/DeviceList';
+import StatusCard from '../components/main/StatusCard';
+import EventsDrawer from '../components/main/EventsDrawer';
+import BottomMenu from '../components/common/BottomMenu';
+import { useGeofences } from '../hooks/useGeofences';
+import { useFilter } from '../hooks/useFilter';
+import { Geofence } from '../types/geofences';
 
-interface StatCardProps {
-  title: string;
-  value: string | number;
-  icon: React.ReactElement;
-  color: string;
+// Define interfaces locally for now
+interface Device {
+  id: number;
+  name: string;
+  unique_id: string;
+  status: 'online' | 'offline' | 'unknown';
+  category: string;
+  last_update: string;
+  group_id: number | null;
+  disabled: boolean;
+  protocol?: string;
+  attributes?: Record<string, any>;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
-  return (
-    <Card sx={{ 
-      height: '100%',
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      backdropFilter: 'blur(15px)',
-      border: '1px solid rgba(255, 255, 255, 0.3)',
-      boxShadow: '0 6px 24px rgba(0, 0, 0, 0.15)',
-      '&:hover': {
-        backgroundColor: 'rgba(255, 255, 255, 1)',
-        transform: 'translateY(-1px)',
-        transition: 'all 0.3s ease',
-        boxShadow: '0 8px 28px rgba(0, 0, 0, 0.2)',
-      }
-    }}>
-      <CardContent sx={{ p: 1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box
-            sx={{
-              backgroundColor: color,
-              borderRadius: '50%',
-              width: 28,
-              height: 28,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-            }}
-          >
-            {icon}
-          </Box>
-          <Box>
-            <Typography variant="body1" component="div" fontWeight="bold" color="rgba(0, 0, 0, 0.87)">
-              {value}
-            </Typography>
-            <Typography variant="caption" color="rgba(0, 0, 0, 0.6)" fontWeight="medium" sx={{ fontSize: '0.7rem' }}>
-              {title}
-            </Typography>
-          </Box>
-        </Box>
-      </CardContent>
-    </Card>
-  );
-};
+interface Position {
+  id: number;
+  device_id?: number;
+  unknown_device_id?: number;
+  deviceId?: number; // For backward compatibility
+  server_time: string;
+  device_time?: string;
+  fix_time?: string;
+  latitude: number;
+  longitude: number;
+  course?: number;
+  speed?: number;
+  address?: string;
+  altitude?: number;
+  accuracy?: number;
+  valid: boolean;
+  protocol: string;
+  attributes?: Record<string, any>;
+}
 
-const DashboardTest: React.FC = () => {
+const Dashboard: React.FC = () => {
   const theme = useTheme();
+  const desktop = useMediaQuery(theme.breakpoints.up('md'));
+
   const [selectedDeviceId, setSelectedDeviceId] = useState<number | undefined>();
-  const [devices, setDevices] = useState<any[]>([]);
-  const [positions, setPositions] = useState<any[]>([]);
+  const [selectedGeofenceId, setSelectedGeofenceId] = useState<number | undefined>();
+  const [, setDevices] = useState<Device[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [filteredDevices, setFilteredDevices] = useState<Device[]>([]);
+  const [filteredPositions, setFilteredPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  
+  // Filter states
+  const [keyword, setKeyword] = useState('');
+  const [filter, setFilter] = useState({
+    statuses: [] as string[],
+    groups: [] as number[],
+  });
+  const [filterSort, setFilterSort] = useState('');
+  const [filterMap, setFilterMap] = useState(false);
+  
+  // UI states
+  const [devicesOpen, setDevicesOpen] = useState(desktop);
+  const [eventsOpen, setEventsOpen] = useState(false);
+  
+  // Geofences hook
+  const { fetchGeofences } = useGeofences();
+
+  // Filter hook
+  useFilter({
+    keyword,
+    filter,
+    filterSort,
+    filterMap,
+    positions,
+    setFilteredDevices,
+    setFilteredPositions,
+  });
+
+  // Callbacks
+  const onDeviceSelect = useCallback((deviceId: number) => {
+    setSelectedDeviceId(deviceId);
+  }, []);
+
+  // Update devicesOpen when desktop changes
+  useEffect(() => {
+    setDevicesOpen(desktop);
+  }, [desktop]);
 
   // Login function
   const handleLogin = async () => {
@@ -175,11 +199,23 @@ const DashboardTest: React.FC = () => {
       console.log('📍 Positions data:', positionsData.length, 'positions');
       console.log('📍 All positions:', positionsData);
 
+      // Transform positions to match the expected format
+      const transformedPositions = positionsData.map((position: any) => ({
+        ...position,
+        deviceId: position.device_id || position.unknown_device_id,
+        server_time: position.server_time || position.device_time,
+        valid: position.valid !== false,
+        protocol: position.protocol || 'unknown',
+      }));
+
       setDevices(devicesData);
-      setPositions(positionsData);
+      setPositions(transformedPositions);
       setError(null);
       setLoading(false);
       console.log('✅ Data fetch completed successfully - loading set to false');
+      
+      // Fetch geofences
+      fetchGeofences();
     } catch (err) {
       console.error('❌ Error fetching data:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
@@ -204,76 +240,18 @@ const DashboardTest: React.FC = () => {
     }
   }, []);
 
-  // Transform data for map display
-  const mapDevices = useMemo(() => {
-    const converted = devices.map(device => ({
-      id: device.id,
-      name: device.name,
-      status: device.status || 'unknown',
-      category: device.category || 'unknown',
-      lastUpdate: device.last_update || new Date().toISOString(),
-    }));
-    console.log('📱 Converted devices for map:', converted);
-    return converted;
-  }, [devices]);
+  // Get selected position
+  const selectedPosition = filteredPositions.find(
+    (position) => selectedDeviceId && (position.deviceId === selectedDeviceId || position.device_id === selectedDeviceId)
+  );
 
-  const mapPositions = useMemo(() => {
-    const converted = positions.map(position => ({
-      id: position.id,
-      deviceId: position.device_id || position.unknown_device_id,
-      latitude: position.latitude,
-      longitude: position.longitude,
-      course: position.course || 0,
-      speed: position.speed || 0,
-      fixTime: position.device_time || position.server_time,
-      attributes: position.attributes || {},
-    }));
-    console.log('🗺️ Converted positions for map:', converted);
-    return converted;
-  }, [positions]);
-
-  // Calculate stats
-  const stats = useMemo(() => {
-    const onlineDevices = mapDevices.filter(d => d.status === 'online').length;
-    const avgSpeed = mapPositions.length > 0 
-      ? Math.round(mapPositions.reduce((sum, pos) => sum + (pos.speed || 0), 0) / mapPositions.length)
-      : 0;
-    const totalDistance = mapPositions.reduce((sum, pos) => sum + (pos.speed || 0) * 0.5, 0);
-
-    return [
-      {
-        title: 'Total Devices',
-        value: mapDevices.length,
-        icon: <DevicesIcon />,
-        color: theme.palette.primary.main,
-      },
-      {
-        title: 'Online Devices',
-        value: onlineDevices,
-        icon: <LocationIcon />,
-        color: theme.palette.success.main,
-      },
-      /*{
-        title: 'Avg Speed',
-        value: `${avgSpeed} km/h`,
-        icon: <SpeedIcon />,
-        color: theme.palette.warning.main,
-      },
-      {
-        title: 'Total Distance',
-        value: `${Math.round(totalDistance)} km`,
-        icon: <TimelineIcon />,
-        color: theme.palette.info.main,
-      },*/
-    ];
-  }, [mapDevices, mapPositions, theme.palette]);
-
-  // Debug logs
-  console.log('🎯 DashboardTest render - token:', !!token, 'loading:', loading, 'error:', error, 'devices:', devices.length, 'positions:', positions.length);
+  // Get selected device
+  const selectedDevice = filteredDevices.find(
+    (device) => device.id === selectedDeviceId
+  );
 
   // Show login button if not authenticated
   if (!token) {
-    console.log('🔐 No token, showing login button');
     return (
       <Box sx={{ 
         display: 'flex', 
@@ -310,7 +288,6 @@ const DashboardTest: React.FC = () => {
 
   // Show loading state
   if (loading) {
-    console.log('⏳ Loading state, showing spinner');
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
         <CircularProgress size={60} />
@@ -323,7 +300,6 @@ const DashboardTest: React.FC = () => {
 
   // Show error state
   if (error) {
-    console.log('❌ Error state, showing error message');
     return (
       <Box>
         <Typography variant="h4" component="h1" gutterBottom>
@@ -338,72 +314,150 @@ const DashboardTest: React.FC = () => {
       </Box>
     );
   }
-
-  console.log('🗺️ Rendering map with', mapPositions.length, 'positions and', mapDevices.length, 'devices');
   
   return (
-    <Box sx={{ 
-      position: 'relative', 
-      height: '100vh', 
-      overflow: 'hidden',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-    }}>
-      {/* Full-screen Map */}
-      <Box sx={{ 
-        position: 'absolute', 
-        top: 0, 
-        left: 0, 
-        right: 0, 
-        bottom: 0,
-        zIndex: 1
-      }}>
-        {mapPositions.length > 0 ? (
-          <MapView
-            positions={mapPositions}
-            devices={mapDevices}
-            selectedDeviceId={selectedDeviceId}
-            onDeviceSelect={setSelectedDeviceId}
-            style={{ width: '100%', height: '100%' }}
-          />
-        ) : (
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center', 
+    <Box sx={{ height: '100%' }}>
+      {/* Desktop Map */}
+      {desktop && (
+        <MapView
+          positions={filteredPositions}
+          devices={filteredDevices.map(device => ({
+            id: device.id,
+            name: device.name,
+            status: device.status || 'unknown',
+            category: device.category || 'unknown',
+            lastUpdate: device.last_update || new Date().toISOString(),
+          }))}
+          selectedDeviceId={selectedDeviceId}
+          onDeviceSelect={onDeviceSelect}
+          showGeofences={true}
+          selectedGeofenceId={selectedGeofenceId}
+          onGeofenceSelect={(geofence: Geofence) => setSelectedGeofenceId(geofence.id)}
+          style={{ width: '100%', height: '100%' }}
+        />
+      )}
+
+      {/* Sidebar */}
+      <Box
+        sx={{
+          pointerEvents: 'none',
+          display: 'flex',
+          flexDirection: 'column',
+          [theme.breakpoints.up('md')]: {
+            position: 'fixed',
+            left: 0,
+            top: 0,
+            height: `calc(100% - ${theme.spacing(3)})`,
+            width: 320,
+            margin: theme.spacing(1.5),
+            zIndex: 3,
+          },
+          [theme.breakpoints.down('md')]: {
             height: '100%',
-            flexDirection: 'column',
-            gap: 2,
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-          }}>
-            <LocationIcon sx={{ fontSize: 64, color: 'rgba(255, 255, 255, 0.7)' }} />
-            <Typography variant="h4" color="rgba(255, 255, 255, 0.9)" fontWeight="bold">
-              No device positions available
-            </Typography>
-            <Typography variant="h6" color="rgba(255, 255, 255, 0.7)">
-              Connect devices to see them on the map
-            </Typography>
+            width: '100%',
+          },
+        }}
+      >
+        <Paper 
+          square 
+          elevation={3} 
+          sx={{ 
+            pointerEvents: 'auto',
+            zIndex: 6,
+          }}
+        >
+          <MainToolbar
+            filteredDevices={filteredDevices}
+            devicesOpen={devicesOpen}
+            setDevicesOpen={setDevicesOpen}
+            keyword={keyword}
+            setKeyword={setKeyword}
+            filter={filter}
+            setFilter={setFilter}
+            filterSort={filterSort}
+            setFilterSort={setFilterSort}
+            filterMap={filterMap}
+            setFilterMap={setFilterMap}
+          />
+        </Paper>
+
+        <Box sx={{ flex: 1, display: 'grid' }}>
+          {/* Mobile Map */}
+          {!desktop && (
+            <Box
+              sx={{
+                pointerEvents: 'auto',
+                gridArea: '1 / 1',
+              }}
+            >
+              <MapView
+                positions={filteredPositions}
+                devices={filteredDevices.map(device => ({
+                  id: device.id,
+                  name: device.name,
+                  status: device.status || 'unknown',
+                  category: device.category || 'unknown',
+                  lastUpdate: device.last_update || new Date().toISOString(),
+                }))}
+                selectedDeviceId={selectedDeviceId}
+                onDeviceSelect={onDeviceSelect}
+                showGeofences={true}
+                selectedGeofenceId={selectedGeofenceId}
+                onGeofenceSelect={(geofence: Geofence) => setSelectedGeofenceId(geofence.id)}
+                style={{ width: '100%', height: '100%' }}
+              />
+            </Box>
+          )}
+
+          {/* Device List */}
+          <Paper 
+            square 
+            sx={{
+              pointerEvents: 'auto',
+              gridArea: '1 / 1',
+              zIndex: 4,
+              ...(devicesOpen ? {} : { visibility: 'hidden' }),
+            }}
+          >
+            <DeviceList
+              devices={filteredDevices}
+              selectedDeviceId={selectedDeviceId}
+              onDeviceSelect={onDeviceSelect}
+            />
+          </Paper>
+        </Box>
+
+        {/* Footer - Desktop only */}
+        {desktop && (
+          <Box
+            sx={{
+              pointerEvents: 'auto',
+              zIndex: 5,
+            }}
+          >
+            {/* Bottom menu would go here */}
           </Box>
         )}
       </Box>
 
-      {/* Statistics Cards - Overlay */}
-      <Box sx={{ 
-        position: 'absolute', 
-        top: 10, 
-        left: 20, 
-        right: 20, 
-        zIndex: 10 
-      }}>
-        <Grid container spacing={2}>
-          {stats.map((stat, index) => (
-            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
-              <StatCard {...stat} />
-            </Grid>
-          ))}
-        </Grid>
-      </Box>
+      {/* Events Drawer */}
+      <EventsDrawer open={eventsOpen} onClose={() => setEventsOpen(false)} />
+
+      {/* Status Card */}
+      {selectedDeviceId && selectedDevice && (
+        <StatusCard
+          deviceId={selectedDeviceId}
+          device={selectedDevice}
+          position={selectedPosition}
+          onClose={() => setSelectedDeviceId(undefined)}
+          desktopPadding={320} // drawerWidthDesktop
+        />
+      )}
+
+      {/* Bottom Menu for Mobile */}
+      <BottomMenu />
     </Box>
   );
 };
 
-export default DashboardTest;
+export default Dashboard;

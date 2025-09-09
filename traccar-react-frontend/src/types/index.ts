@@ -138,3 +138,6 @@ export interface CommandQueue {
   updated_at: string;
   command?: Command;
 }
+
+// Re-export geofence types
+export * from './geofences';
