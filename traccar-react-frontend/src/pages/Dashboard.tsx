@@ -33,36 +33,15 @@ interface Device {
   attributes?: Record<string, any>;
 }
 
-interface Position {
-  id: number;
-  device_id?: number;
-  unknown_device_id?: number;
-  deviceId?: number; // For backward compatibility
-  server_time: string;
-  device_time?: string;
-  fix_time?: string;
-  latitude: number;
-  longitude: number;
-  course?: number;
-  speed?: number;
-  address?: string;
-  altitude?: number;
-  accuracy?: number;
-  valid: boolean;
-  protocol: string;
-  attributes?: Record<string, any>;
-}
-
 const Dashboard: React.FC = () => {
   const theme = useTheme();
   const desktop = useMediaQuery(theme.breakpoints.up('md'));
 
   const [selectedDeviceId, setSelectedDeviceId] = useState<number | undefined>();
   const [selectedGeofenceId, setSelectedGeofenceId] = useState<number | undefined>();
-  const [, setDevices] = useState<Device[]>([]);
-  const [positions, setPositions] = useState<Position[]>([]);
+  const [positions, setPositions] = useState<any[]>([]);
   const [filteredDevices, setFilteredDevices] = useState<Device[]>([]);
-  const [filteredPositions, setFilteredPositions] = useState<Position[]>([]);
+  const [filteredPositions, setFilteredPositions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -208,7 +187,7 @@ const Dashboard: React.FC = () => {
         protocol: position.protocol || 'unknown',
       }));
 
-      setDevices(devicesData);
+      // Devices are stored in filteredDevices
       setPositions(transformedPositions);
       setError(null);
       setLoading(false);
@@ -242,7 +221,7 @@ const Dashboard: React.FC = () => {
 
   // Get selected position
   const selectedPosition = filteredPositions.find(
-    (position) => selectedDeviceId && (position.deviceId === selectedDeviceId || position.device_id === selectedDeviceId)
+    (position) => selectedDeviceId && position.deviceId === selectedDeviceId
   );
 
   // Get selected device
@@ -316,126 +295,187 @@ const Dashboard: React.FC = () => {
   }
   
   return (
-    <Box sx={{ height: '100%' }}>
-      {/* Desktop Map */}
+    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Top Toolbar - Always visible */}
       {desktop && (
-        <MapView
-          positions={filteredPositions}
-          devices={filteredDevices.map(device => ({
-            id: device.id,
-            name: device.name,
-            status: device.status || 'unknown',
-            category: device.category || 'unknown',
-            lastUpdate: device.last_update || new Date().toISOString(),
-          }))}
-          selectedDeviceId={selectedDeviceId}
-          onDeviceSelect={onDeviceSelect}
-          showGeofences={true}
-          selectedGeofenceId={selectedGeofenceId}
-          onGeofenceSelect={(geofence: Geofence) => setSelectedGeofenceId(geofence.id)}
-          style={{ width: '100%', height: '100%' }}
-        />
-      )}
-
-      {/* Sidebar */}
-      <Box
-        sx={{
-          pointerEvents: 'none',
-          display: 'flex',
-          flexDirection: 'column',
-          [theme.breakpoints.up('md')]: {
-            position: 'fixed',
-            left: 0,
-            top: 0,
-            height: `calc(100% - ${theme.spacing(3)})`,
-            width: 320,
-            margin: theme.spacing(1.5),
-            zIndex: 3,
-          },
-          [theme.breakpoints.down('md')]: {
-            height: '100%',
-            width: '100%',
-          },
-        }}
-      >
-        <Paper 
-          square 
-          elevation={3} 
-          sx={{ 
-            pointerEvents: 'auto',
-            zIndex: 6,
-          }}
-        >
-          <MainToolbar
-            filteredDevices={filteredDevices}
-            devicesOpen={devicesOpen}
-            setDevicesOpen={setDevicesOpen}
-            keyword={keyword}
-            setKeyword={setKeyword}
-            filter={filter}
-            setFilter={setFilter}
-            filterSort={filterSort}
-            setFilterSort={setFilterSort}
-            filterMap={filterMap}
-            setFilterMap={setFilterMap}
-          />
-        </Paper>
-
-        <Box sx={{ flex: 1, display: 'grid' }}>
-          {/* Mobile Map */}
-          {!desktop && (
-            <Box
-              sx={{
-                pointerEvents: 'auto',
-                gridArea: '1 / 1',
-              }}
-            >
-              <MapView
-                positions={filteredPositions}
-                devices={filteredDevices.map(device => ({
-                  id: device.id,
-                  name: device.name,
-                  status: device.status || 'unknown',
-                  category: device.category || 'unknown',
-                  lastUpdate: device.last_update || new Date().toISOString(),
-                }))}
-                selectedDeviceId={selectedDeviceId}
-                onDeviceSelect={onDeviceSelect}
-                showGeofences={true}
-                selectedGeofenceId={selectedGeofenceId}
-                onGeofenceSelect={(geofence: Geofence) => setSelectedGeofenceId(geofence.id)}
-                style={{ width: '100%', height: '100%' }}
-              />
-            </Box>
-          )}
-
-          {/* Device List */}
-          <Paper 
-            square 
+        <Box sx={{ zIndex: 10, position: 'relative' }}>
+          <Paper
+            square
+            elevation={3}
             sx={{
               pointerEvents: 'auto',
-              gridArea: '1 / 1',
-              zIndex: 4,
-              ...(devicesOpen ? {} : { visibility: 'hidden' }),
+              zIndex: 6,
             }}
           >
-            <DeviceList
-              devices={filteredDevices}
-              selectedDeviceId={selectedDeviceId}
-              onDeviceSelect={onDeviceSelect}
+            <MainToolbar
+              filteredDevices={filteredDevices}
+              devicesOpen={devicesOpen}
+              setDevicesOpen={setDevicesOpen}
+              keyword={keyword}
+              setKeyword={setKeyword}
+              filter={filter}
+              setFilter={setFilter}
+              filterSort={filterSort}
+              setFilterSort={setFilterSort}
+              filterMap={filterMap}
+              setFilterMap={setFilterMap}
             />
           </Paper>
         </Box>
+      )}
 
-        {/* Footer - Desktop only */}
+      {/* Main Content Area */}
+      <Box sx={{ flex: 1, display: 'flex', position: 'relative' }}>
+        {/* Desktop Map - Full screen */}
         {desktop && (
-          <Box
-            sx={{
-              pointerEvents: 'auto',
-              zIndex: 5,
-            }}
-          >
-            {/* Bottom menu would go here */}
+          <MapView
+            positions={filteredPositions}
+            devices={filteredDevices.map(device => ({
+              id: device.id,
+              name: device.name,
+              status: device.status || 'unknown',
+              category: device.category || 'unknown',
+              lastUpdate: device.last_update || new Date().toISOString(),
+            }))}
+            selectedDeviceId={selectedDeviceId}
+            onDeviceSelect={onDeviceSelect}
+            showGeofences={true}
+            selectedGeofenceId={selectedGeofenceId}
+            onGeofenceSelect={(geofence: Geofence) => setSelectedGeofenceId(geofence.id)}
+            style={{ width: '100%', height: '100%' }}
+          />
+        )}
+
+        {/* Desktop Overlay Panels */}
+        {desktop && (
+          <>
+            {/* Left Sidebar Panel */}
+            <Box
+              sx={{
+                position: 'absolute',
+                left: 16,
+                top: 80,
+                width: 320,
+                height: 'calc(100% - 120px)',
+                zIndex: 100,
+                pointerEvents: 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1,
+              }}
+            >
+              {/* Device List Panel */}
+              <Paper
+                square
+                elevation={3}
+                sx={{
+                  pointerEvents: 'auto',
+                  flex: 1,
+                  maxHeight: devicesOpen ? '60%' : 60,
+                  overflow: 'hidden',
+                  transition: 'max-height 0.3s ease',
+                }}
+              >
+                <DeviceList
+                  devices={filteredDevices}
+                  selectedDeviceId={selectedDeviceId}
+                  onDeviceSelect={onDeviceSelect}
+                />
+              </Paper>
+            </Box>
+
+            {/* Bottom Menu Panel - Desktop */}
+            <Box
+              sx={{
+                position: 'absolute',
+                bottom: 16,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 100,
+                pointerEvents: 'auto',
+              }}
+            >
+              <BottomMenu />
+            </Box>
+          </>
+        )}
+
+        {/* Mobile Layout */}
+        {!desktop && (
+          <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+            {/* Mobile Toolbar */}
+            <Paper
+              square
+              elevation={3}
+              sx={{
+                pointerEvents: 'auto',
+                zIndex: 6,
+              }}
+            >
+              <MainToolbar
+                filteredDevices={filteredDevices}
+                devicesOpen={devicesOpen}
+                setDevicesOpen={setDevicesOpen}
+                keyword={keyword}
+                setKeyword={setKeyword}
+                filter={filter}
+                setFilter={setFilter}
+                filterSort={filterSort}
+                setFilterSort={setFilterSort}
+                filterMap={filterMap}
+                setFilterMap={setFilterMap}
+              />
+            </Paper>
+
+            {/* Mobile Content */}
+            <Box sx={{ flex: 1, display: 'grid', position: 'relative' }}>
+              {/* Mobile Map */}
+              <Box
+                sx={{
+                  pointerEvents: 'auto',
+                  gridArea: '1 / 1',
+                }}
+              >
+                <MapView
+                  positions={filteredPositions}
+                  devices={filteredDevices.map(device => ({
+                    id: device.id,
+                    name: device.name,
+                    status: device.status || 'unknown',
+                    category: device.category || 'unknown',
+                    lastUpdate: device.last_update || new Date().toISOString(),
+                  }))}
+                  selectedDeviceId={selectedDeviceId}
+                  onDeviceSelect={onDeviceSelect}
+                  showGeofences={true}
+                  selectedGeofenceId={selectedGeofenceId}
+                  onGeofenceSelect={(geofence: Geofence) => setSelectedGeofenceId(geofence.id)}
+                  style={{ width: '100%', height: '100%' }}
+                />
+              </Box>
+
+              {/* Mobile Device List Overlay */}
+              <Paper
+                square
+                sx={{
+                  pointerEvents: 'auto',
+                  gridArea: '1 / 1',
+                  zIndex: 4,
+                  ...(devicesOpen ? {} : { visibility: 'hidden' }),
+                }}
+              >
+                <DeviceList
+                  devices={filteredDevices}
+                  selectedDeviceId={selectedDeviceId}
+                  onDeviceSelect={onDeviceSelect}
+                />
+              </Paper>
+            </Box>
+
+            {/* Mobile Bottom Menu */}
+            <Box sx={{ pointerEvents: 'auto', zIndex: 5 }}>
+              <BottomMenu />
+            </Box>
           </Box>
         )}
       </Box>
@@ -453,9 +493,6 @@ const Dashboard: React.FC = () => {
           desktopPadding={320} // drawerWidthDesktop
         />
       )}
-
-      {/* Bottom Menu for Mobile */}
-      <BottomMenu />
     </Box>
   );
 };

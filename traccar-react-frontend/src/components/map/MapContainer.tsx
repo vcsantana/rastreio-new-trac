@@ -63,26 +63,41 @@ const MapContainer: React.FC<MapContainerProps> = ({
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
-    // Initialize the map
-    map.current = new maplibregl.Map({
-      container: mapContainer.current,
-      ...mapConfig
-    });
+    console.log('🗺️ Initializing map...');
 
-    // Add controls
-    map.current.addControl(
-      new maplibregl.AttributionControl({ compact: true }),
-      'bottom-right'
-    );
+    try {
+      // Initialize the map
+      map.current = new maplibregl.Map({
+        container: mapContainer.current,
+        ...mapConfig
+      });
 
-    // Handle map load
-    map.current.on('load', () => {
-      handleMapLoad(map.current!);
-    });
+      console.log('🗺️ Map instance created');
+
+      // Add controls
+      map.current.addControl(
+        new maplibregl.AttributionControl({ compact: true }),
+        'bottom-right'
+      );
+
+      // Handle map load
+      map.current.on('load', () => {
+        console.log('🗺️ Map loaded successfully');
+        handleMapLoad(map.current!);
+      });
+
+      map.current.on('error', (e) => {
+        console.error('🗺️ Map error:', e);
+      });
+
+    } catch (error) {
+      console.error('🗺️ Failed to initialize map:', error);
+    }
 
     // Cleanup function
     return () => {
       if (map.current) {
+        console.log('🗺️ Cleaning up map');
         map.current.remove();
         map.current = null;
         setMapReady(false);
@@ -102,10 +117,10 @@ const MapContainer: React.FC<MapContainerProps> = ({
   });
 
   return (
-    <Box sx={{ position: 'relative', ...style }}>
+    <Box sx={{ position: 'relative', width: '100%', height: '100%', minHeight: 400, ...style }}>
       <div
         ref={mapContainer}
-        style={{ width: '100%', height: '100%' }}
+        style={{ width: '100%', height: '100%', minHeight: 400 }}
       />
       {mapReady && childrenWithProps}
     </Box>

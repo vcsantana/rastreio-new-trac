@@ -294,7 +294,7 @@ const MapView: React.FC<MapViewProps> = ({
   }, [refetchHistory]);
 
   return (
-    <Box sx={{ position: 'relative', ...style }}>
+    <Box sx={{ position: 'relative', width: '100%', height: '100%', minHeight: 400, ...style }}>
       <MapContainer onMapLoad={handleMapLoad} style={style}>
         <DeviceMarkers
           positions={positions}
