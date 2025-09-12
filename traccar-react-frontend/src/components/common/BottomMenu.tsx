@@ -16,7 +16,6 @@ import {
   Description as ReportsIcon,
   Settings as SettingsIcon,
   Person as PersonIcon,
-  ExitToApp as LogoutIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks/useAuth';
 import { useWebSocket } from '../../hooks/useWebSocket';
@@ -79,8 +78,75 @@ const BottomMenu: React.FC = () => {
     }
   };
 
+  // Show different layout for desktop and mobile
   if (!isMobile) {
-    return null; // Only show on mobile
+    // Desktop version - horizontal menu
+    return (
+      <Paper
+        square
+        elevation={3}
+        sx={{
+          position: 'fixed',
+          bottom: 16,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1000,
+          borderRadius: 2,
+          overflow: 'hidden'
+        }}
+      >
+        <BottomNavigation
+          value={currentSelection()}
+          onChange={handleSelection}
+          showLabels
+          sx={{
+            backgroundColor: theme.palette.background.paper,
+            '& .MuiBottomNavigationAction-root': {
+              minWidth: 80,
+              padding: '6px 12px',
+            }
+          }}
+        >
+          <BottomNavigationAction
+            label="Map"
+            icon={
+              <Badge color="error" variant="dot" overlap="circular" invisible={connected}>
+                <MapIcon />
+              </Badge>
+            }
+            value="map"
+          />
+          <BottomNavigationAction
+            label="Reports"
+            icon={<ReportsIcon />}
+            value="reports"
+          />
+          <BottomNavigationAction
+            label="Settings"
+            icon={<SettingsIcon />}
+            value="settings"
+          />
+          <BottomNavigationAction
+            label="Account"
+            icon={<PersonIcon />}
+            value="account"
+          />
+        </BottomNavigation>
+
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={() => setAnchorEl(null)}
+        >
+          <MenuItem onClick={handleAccount}>
+            <Typography color="textPrimary">Account Settings</Typography>
+          </MenuItem>
+          <MenuItem onClick={handleLogout}>
+            <Typography color="error">Logout</Typography>
+          </MenuItem>
+        </Menu>
+      </Paper>
+    );
   }
 
   return (

@@ -384,19 +384,6 @@ const Dashboard: React.FC = () => {
               </Paper>
             </Box>
 
-            {/* Bottom Menu Panel - Desktop */}
-            <Box
-              sx={{
-                position: 'absolute',
-                bottom: 16,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                zIndex: 100,
-                pointerEvents: 'auto',
-              }}
-            >
-              <BottomMenu />
-            </Box>
           </>
         )}
 
@@ -493,6 +480,9 @@ const Dashboard: React.FC = () => {
           desktopPadding={320} // drawerWidthDesktop
         />
       )}
+
+      {/* Bottom Menu - Always visible */}
+      <BottomMenu />
     </Box>
   );
 };
