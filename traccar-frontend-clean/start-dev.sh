@@ -5,7 +5,7 @@
 
 echo "🚀 Iniciando Traccar Frontend Clean..."
 echo "📡 API Backend: http://localhost:8000"
-echo "🌐 Frontend: http://localhost:3002"
+echo "🌐 Frontend: http://localhost:3005"
 echo "📚 API Docs: http://localhost:8000/docs"
 echo ""
 
@@ -29,7 +29,7 @@ else
 fi
 
 echo "🎯 Iniciando servidor de desenvolvimento..."
-echo "   Frontend estará disponível em: http://localhost:3002"
+echo "   Frontend estará disponível em: http://localhost:3005"
 echo "   Proxy configurado para: http://localhost:8000"
 echo ""
 

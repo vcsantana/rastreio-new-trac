@@ -27,7 +27,7 @@ const DevicesPage = () => {
     const fetchDevices = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('/api/devices', {
+        const response = await fetch('/api/devices/', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
