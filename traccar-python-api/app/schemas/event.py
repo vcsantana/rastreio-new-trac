@@ -56,7 +56,7 @@ class EventStatsResponse(BaseModel):
     """Schema for event statistics"""
     total_events: int
     events_by_type: Dict[str, int]
-    recent_events: int
+    recent_events: list[Dict[str, Any]]
     device_events: Dict[int, int]
 
 

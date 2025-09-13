@@ -426,6 +426,47 @@ async def create_backup(
     }
 
 
+@router.get("/server")
+async def get_server_info_simple(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get basic server information for frontend compatibility."""
+    try:
+        server_config = db.query(Server).first()
+    except Exception:
+        server_config = None
+
+    # Return server info in format expected by frontend
+    return {
+        "id": 1,
+        "registration": getattr(server_config, 'registration_enabled', True) if server_config else True,
+        "readonly": False,
+        "deviceReadonly": False,
+        "limitCommands": False,
+        "map": "osm",  # Default to OpenStreetMap
+        "bingKey": None,
+        "mapUrl": None,
+        "latitude": 0.0,
+        "longitude": 0.0,
+        "zoom": getattr(server_config, 'zoom', 6) if server_config else 6,
+        "twelveHourFormat": False,
+        "version": "1.0.0",
+        "forceSettings": False,
+        "coordinateFormat": None,
+        "poiLayer": None,
+        "name": getattr(server_config, 'name', "Traccar Python API") if server_config else "Traccar Python API",
+        "description": "Modern GPS tracking server built with FastAPI",
+        "logo": None,
+        "logoInverted": None,
+        "emailEnabled": True,
+        "textEnabled": True,
+        "storage": None,
+        "maxFileSize": 10485760,
+        "attributes": getattr(server_config, 'attributes', {}) if server_config else {},
+    }
+
+
 @router.get("/server/logs")
 async def get_server_logs(
     lines: int = Query(default=100, ge=1, le=1000, description="Number of log lines to retrieve"),
@@ -438,7 +479,7 @@ async def get_server_logs(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required"
         )
-    
+
     # In a real implementation, this would read actual log files
     mock_logs = [
         f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} INFO: Server started",
@@ -446,7 +487,7 @@ async def get_server_logs(
         f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} INFO: API endpoints loaded",
         f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} INFO: WebSocket server started",
     ]
-    
+
     return {
         "logs": mock_logs[:lines],
         "total_lines": len(mock_logs),

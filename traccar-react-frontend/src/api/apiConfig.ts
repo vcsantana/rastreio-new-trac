@@ -1,7 +1,6 @@
 // API Configuration for Python FastAPI
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-const API_VERSION = import.meta.env.VITE_API_VERSION || 'v1';
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws';
+const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000';
+const WS_URL = (import.meta as any).env?.VITE_WS_URL || 'ws://localhost:8000/ws';
 
 export const API_ENDPOINTS = {
   // Authentication
@@ -42,6 +41,12 @@ export const API_ENDPOINTS = {
   COMMAND_RETRY: `${API_BASE_URL}/api/commands/retry`,
   COMMAND_CANCEL: `${API_BASE_URL}/api/commands/cancel`,
   DEVICE_COMMANDS: (deviceId: number) => `${API_BASE_URL}/api/commands/device/${deviceId}`,
+
+  // Reports
+  REPORTS: `${API_BASE_URL}/api/reports`,
+  REPORT_STATS: `${API_BASE_URL}/api/reports/stats/summary`,
+  REPORT_TEMPLATES: `${API_BASE_URL}/api/reports/templates`,
+  REPORT_EXTENSIONS: `${API_BASE_URL}/api/report_extensions`,
   
   // WebSocket
   WEBSOCKET: WS_URL,

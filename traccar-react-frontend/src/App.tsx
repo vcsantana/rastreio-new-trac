@@ -25,6 +25,7 @@ const Commands = React.lazy(() => import('./pages/Commands'));
 const Geofences = React.lazy(() => import('./pages/Geofences'));
 const Events = React.lazy(() => import('./pages/Events'));
 const Reports = React.lazy(() => import('./pages/ReportsPage'));
+const Replay = React.lazy(() => import('./pages/Replay'));
 const Settings = React.lazy(() => import('./pages/Settings'));
 const LogsViewer = React.lazy(() => import('./components/LogsViewer'));
 const UnknownDevices = React.lazy(() => import('./pages/UnknownDevices'));
@@ -73,6 +74,7 @@ function App() {
                         <Route path="commands" element={<Commands />} />
                         <Route path="geofences" element={<Geofences />} />
                         <Route path="events" element={<Events />} />
+                        <Route path="replay" element={<Replay />} />
                         
                         {/* Admin-only routes */}
                         <Route path="reports" element={

@@ -107,7 +107,7 @@ export const useGeofences = (): UseGeofencesReturn => {
         params.append('size', filters.size.toString());
       }
       
-      const response = await fetch(`${API_BASE_URL}/geofences/?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/api/geofences/?${params}`, {
         headers: getAuthHeaders()
       });
       
@@ -130,7 +130,7 @@ export const useGeofences = (): UseGeofencesReturn => {
     setError(null);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/geofences/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/geofences/${id}`, {
         headers: getAuthHeaders()
       });
       
@@ -153,7 +153,7 @@ export const useGeofences = (): UseGeofencesReturn => {
     setError(null);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/geofences/`, {
+      const response = await fetch(`${API_BASE_URL}/api/geofences/`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -183,7 +183,7 @@ export const useGeofences = (): UseGeofencesReturn => {
     setError(null);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/geofences/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/geofences/${id}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -220,7 +220,7 @@ export const useGeofences = (): UseGeofencesReturn => {
     setError(null);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/geofences/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/geofences/${id}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
@@ -250,7 +250,7 @@ export const useGeofences = (): UseGeofencesReturn => {
     setError(null);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/geofences/stats/summary`, {
+      const response = await fetch(`${API_BASE_URL}/api/geofences/stats/summary`, {
         headers: getAuthHeaders()
       });
       
@@ -273,7 +273,7 @@ export const useGeofences = (): UseGeofencesReturn => {
     setError(null);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/geofences/test`, {
+      const response = await fetch(`${API_BASE_URL}/api/geofences/test`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(request)
@@ -314,7 +314,7 @@ export const useGeofences = (): UseGeofencesReturn => {
         params.append('limit', filters.limit.toString());
       }
       
-      const response = await fetch(`${API_BASE_URL}/geofences/events/?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/api/geofences/events/?${params}`, {
         headers: getAuthHeaders()
       });
       
@@ -347,7 +347,7 @@ export const useGeofences = (): UseGeofencesReturn => {
       }
       params.append('days', days.toString());
       
-      const response = await fetch(`${API_BASE_URL}/geofences/events/stats?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/api/geofences/events/stats?${params}`, {
         headers: getAuthHeaders()
       });
       

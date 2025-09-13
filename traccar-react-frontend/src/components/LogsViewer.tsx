@@ -103,9 +103,10 @@ const LogsViewer: React.FC = () => {
       params.append('hours', hours.toString());
       params.append('limit', limit.toString());
 
-      const response = await fetch(`/api/logs/${logType}?${params}`, {
+      const response = await fetch(`http://localhost:8000/api/logs/${logType}?${params}`, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
 
@@ -126,7 +127,7 @@ const LogsViewer: React.FC = () => {
     try {
       if (!isAuthenticated || !token) return;
 
-      const response = await fetch('/api/logs/devices', {
+      const response = await fetch('http://localhost:8000/api/logs/devices', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -145,7 +146,7 @@ const LogsViewer: React.FC = () => {
     try {
       if (!isAuthenticated || !token) return;
 
-      const response = await fetch('/api/logs/protocols', {
+      const response = await fetch('http://localhost:8000/api/logs/protocols', {
         headers: {
           'Authorization': `Bearer ${token}`
         }

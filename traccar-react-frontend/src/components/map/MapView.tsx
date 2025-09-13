@@ -45,8 +45,8 @@ interface Device {
 }
 
 interface MapViewProps {
-  positions: Position[];
-  devices: Device[];
+  positions?: Position[];
+  devices?: Device[];
   selectedDeviceId?: number;
   onDeviceSelect?: (deviceId: number) => void;
   style?: React.CSSProperties;
@@ -58,6 +58,7 @@ interface MapViewProps {
   showEvents?: boolean;
   selectedEventId?: number;
   onEventSelect?: (event: Event) => void;
+  children?: React.ReactNode;
 }
 
 // Map style configurations
@@ -109,8 +110,8 @@ const MAP_STYLES = {
 };
 
 const MapView: React.FC<MapViewProps> = ({
-  positions,
-  devices,
+  positions = [],
+  devices = [],
   selectedDeviceId,
   onDeviceSelect,
   style = { width: '100%', height: '400px' },
@@ -122,6 +123,7 @@ const MapView: React.FC<MapViewProps> = ({
   showEvents = false,
   selectedEventId,
   onEventSelect,
+  children,
 }) => {
   console.log('🗺️ MapView render - positions:', positions?.length || 0, 'devices:', devices?.length || 0, 'selectedDeviceId:', selectedDeviceId, 'isReplaying:', isReplaying);
   console.log('🗺️ MapView props:', { positions, devices, selectedDeviceId, currentReplayPosition, isReplaying });
@@ -302,7 +304,7 @@ const MapView: React.FC<MapViewProps> = ({
           onMarkerClick={handleMarkerClick}
           selectedDeviceId={selectedDeviceId}
         />
-        
+
         {/* Route path for selected device */}
         {showRoutes && selectedDeviceId && routePositions && routePositions.length > 1 && (
           <RoutePath
@@ -314,7 +316,7 @@ const MapView: React.FC<MapViewProps> = ({
             showSpeedColors={showSpeedColors}
           />
         )}
-        
+
         {/* Replay marker for current position */}
         {isReplaying && currentReplayPosition && (
           <ReplayMarker
@@ -323,7 +325,7 @@ const MapView: React.FC<MapViewProps> = ({
             deviceName={selectedDevice?.name}
           />
         )}
-        
+
         {/* Geofence layers */}
         {showGeofences && (
           <GeofenceLayers
@@ -334,7 +336,7 @@ const MapView: React.FC<MapViewProps> = ({
             showGeofences={showGeofences}
           />
         )}
-        
+
         {/* Event markers */}
         {showEvents && (
           <EventMarkers
@@ -345,6 +347,13 @@ const MapView: React.FC<MapViewProps> = ({
             clusterEvents={true}
             map={map}
           />
+        )}
+
+        {/* Custom children components */}
+        {React.Children.map(children, (child) =>
+          React.isValidElement(child)
+            ? React.cloneElement(child, { map })
+            : child
         )}
       </MapContainer>
       

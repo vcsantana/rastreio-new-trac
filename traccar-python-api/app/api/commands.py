@@ -4,7 +4,8 @@ Command API endpoints for device command management.
 
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 import structlog
 
 from app.database import get_db
@@ -27,7 +28,7 @@ router = APIRouter(prefix="/api/commands", tags=["commands"])
 async def create_command(
     command_data: CommandCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Create a new command for a device."""
     try:
@@ -52,11 +53,10 @@ async def create_command(
 
 
 @router.post("/bulk", response_model=CommandBulkResponse, status_code=status.HTTP_201_CREATED)
-@rate_limit("api", "commands_bulk")
 async def create_bulk_commands(
     bulk_data: CommandBulkCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Create multiple commands at once."""
     try:
@@ -83,7 +83,6 @@ async def create_bulk_commands(
 
 
 @router.get("/", response_model=CommandListResponse)
-@rate_limit("api", "commands_list")
 async def get_commands(
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(20, ge=1, le=100, description="Page size"),
@@ -94,7 +93,7 @@ async def get_commands(
     sort_by: str = Query("created_at", description="Sort field"),
     sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sort order"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get commands with filtering and pagination."""
     try:
@@ -136,25 +135,51 @@ async def get_commands(
 
 
 @router.get("/search", response_model=CommandListResponse)
-@rate_limit("api", "commands")
 async def search_commands(
-    search: CommandSearch,
+    query: Optional[str] = Query(None, description="Search query"),
+    page: int = Query(1, ge=1, description="Page number"),
+    size: int = Query(20, ge=1, le=100, description="Page size"),
+    sort_by: str = Query("created_at", description="Sort field"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sort order"),
+    device_id: Optional[int] = Query(None, description="Filter by device ID"),
+    command_type: Optional[str] = Query(None, description="Filter by command type"),
+    status: Optional[str] = Query(None, description="Filter by status"),
+    priority: Optional[str] = Query(None, description="Filter by priority"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Search commands with advanced filtering."""
     try:
+        from app.schemas.command import CommandFilter
+        
+        # Build search object
+        filters = CommandFilter(
+            device_id=device_id,
+            command_type=command_type,
+            status=status,
+            priority=priority
+        )
+        
+        search = CommandSearch(
+            query=query,
+            filters=filters,
+            page=page,
+            size=size,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
+        
         command_service = CommandService(db)
         commands, total = await command_service.get_commands(search, current_user.id)
         
         # Calculate pagination
-        pages = (total + search.size - 1) // search.size
+        pages = (total + size - 1) // size
         
         return CommandListResponse(
             commands=commands,
             total=total,
-            page=search.page,
-            size=search.size,
+            page=page,
+            size=size,
             pages=pages
         )
         
@@ -164,11 +189,10 @@ async def search_commands(
 
 
 @router.get("/{command_id}", response_model=CommandResponse)
-@rate_limit("api", "commands_detail")
 async def get_command(
     command_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get a specific command by ID."""
     try:
@@ -188,12 +212,11 @@ async def get_command(
 
 
 @router.put("/{command_id}", response_model=CommandResponse)
-@rate_limit("api", "commands")
 async def update_command(
     command_id: int,
     update_data: CommandUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Update a command."""
     try:
@@ -219,11 +242,10 @@ async def update_command(
 
 
 @router.post("/retry", response_model=List[CommandResponse])
-@rate_limit("api", "commands_retry")
 async def retry_commands(
     retry_data: CommandRetryRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Retry failed commands."""
     try:
@@ -245,11 +267,10 @@ async def retry_commands(
 
 
 @router.post("/cancel", response_model=List[CommandResponse])
-@rate_limit("api", "commands_retry")
 async def cancel_commands(
     cancel_data: CommandCancelRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Cancel pending commands."""
     try:
@@ -271,10 +292,9 @@ async def cancel_commands(
 
 
 @router.get("/stats/summary", response_model=CommandStatsResponse)
-@rate_limit("api", "commands")
 async def get_command_stats(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get command statistics."""
     try:
@@ -289,35 +309,48 @@ async def get_command_stats(
 
 
 @router.get("/queue/", response_model=CommandQueueListResponse)
-@rate_limit("api", "commands")
 async def get_command_queue(
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(20, ge=1, le=100, description="Page size"),
     priority: Optional[str] = Query(None, description="Filter by priority"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get command queue entries."""
     try:
         from app.models.command import CommandQueue
-        from sqlalchemy import and_
+        from sqlalchemy import and_, func
         
-        query = db.query(CommandQueue)
+        # Build query
+        query = select(CommandQueue)
         
         # Apply filters
+        filters = []
         if priority:
-            query = query.filter(CommandQueue.priority == priority)
+            filters.append(CommandQueue.priority == priority)
         
         if is_active is not None:
-            query = query.filter(CommandQueue.is_active == is_active)
+            filters.append(CommandQueue.is_active == is_active)
+        
+        if filters:
+            query = query.where(and_(*filters))
         
         # Get total count
-        total = query.count()
+        count_query = select(func.count(CommandQueue.id))
+        if filters:
+            count_query = count_query.where(and_(*filters))
+        
+        total_result = await db.execute(count_query)
+        total = total_result.scalar()
         
         # Apply pagination
         offset = (page - 1) * size
-        queue_entries = query.offset(offset).limit(size).all()
+        query = query.offset(offset).limit(size)
+        
+        # Execute query
+        result = await db.execute(query)
+        queue_entries = result.scalars().all()
         
         # Calculate pagination
         pages = (total + size - 1) // size
@@ -336,14 +369,13 @@ async def get_command_queue(
 
 
 @router.get("/device/{device_id}", response_model=CommandListResponse)
-@rate_limit("api", "commands_list")
 async def get_device_commands(
     device_id: int,
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(20, ge=1, le=100, description="Page size"),
     status: Optional[str] = Query(None, description="Filter by status"),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """Get commands for a specific device."""
     try:

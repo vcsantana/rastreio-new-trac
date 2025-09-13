@@ -187,12 +187,12 @@ class EventService:
         
         # Events by type
         events_by_type = {}
-        type_counts = self.db.query(
-            Event.type, 
-            func.count(Event.id).label('count')
-        ).filter(
-            Event.event_time >= start_time
-        ).group_by(Event.type).all()
+        result = await self.db.execute(
+            select(Event.type, func.count(Event.id).label('count'))
+            .where(Event.event_time >= start_time)
+            .group_by(Event.type)
+        )
+        type_counts = result.all()
         
         for type_name, count in type_counts:
             events_by_type[type_name] = count
@@ -206,20 +206,50 @@ class EventService:
         
         # Events by device
         device_events = {}
-        device_counts = self.db.query(
-            Event.device_id,
-            func.count(Event.id).label('count')
-        ).filter(
-            Event.event_time >= start_time
-        ).group_by(Event.device_id).all()
+        result = await self.db.execute(
+            select(Event.device_id, func.count(Event.id).label('count'))
+            .where(Event.event_time >= start_time)
+            .group_by(Event.device_id)
+        )
+        device_counts = result.all()
         
         for device_id, count in device_counts:
             device_events[device_id] = count
         
+        # Get recent events list (last 10 events)
+        recent_events_result = await self.db.execute(
+            select(Event)
+            .options(joinedload(Event.device), joinedload(Event.position))
+            .where(Event.event_time >= recent_start)
+            .order_by(desc(Event.event_time))
+            .limit(10)
+        )
+        recent_events_list = recent_events_result.scalars().all()
+        
+        # Transform recent events to response format
+        recent_events_data = []
+        for event in recent_events_list:
+            event_data = {
+                "id": event.id,
+                "type": event.type,
+                "device_id": event.device_id,
+                "device_name": event.device.name if event.device else None,
+                "event_time": event.event_time.isoformat(),
+                "attributes": event.attributes
+            }
+            if event.position:
+                event_data["position_data"] = {
+                    "latitude": event.position.latitude,
+                    "longitude": event.position.longitude,
+                    "speed": event.position.speed,
+                    "course": event.position.course
+                }
+            recent_events_data.append(event_data)
+        
         return {
             "total_events": total_events,
             "events_by_type": events_by_type,
-            "recent_events": recent_events,
+            "recent_events": recent_events_data,
             "device_events": device_events
         }
 
@@ -341,13 +371,14 @@ class EventService:
     async def get_events_by_device(self, device_id: int, limit: int = 100) -> List[Event]:
         """Get recent events for a specific device"""
         
-        return self.db.query(Event).options(
-            joinedload(Event.position)
-        ).filter(
-            Event.device_id == device_id
-        ).order_by(
-            desc(Event.event_time)
-        ).limit(limit).all()
+        result = await self.db.execute(
+            select(Event)
+            .options(joinedload(Event.position))
+            .where(Event.device_id == device_id)
+            .order_by(desc(Event.event_time))
+            .limit(limit)
+        )
+        return result.scalars().all()
 
     async def get_events_by_type(self, event_type: str, limit: int = 100) -> List[Event]:
         """Get recent events of a specific type"""
@@ -355,14 +386,14 @@ class EventService:
         if event_type not in EVENT_TYPES:
             raise ValueError(f"Invalid event type: {event_type}")
         
-        return self.db.query(Event).options(
-            joinedload(Event.device),
-            joinedload(Event.position)
-        ).filter(
-            Event.type == event_type
-        ).order_by(
-            desc(Event.event_time)
-        ).limit(limit).all()
+        result = await self.db.execute(
+            select(Event)
+            .options(joinedload(Event.device), joinedload(Event.position))
+            .where(Event.type == event_type)
+            .order_by(desc(Event.event_time))
+            .limit(limit)
+        )
+        return result.scalars().all()
 
     async def cleanup_old_events(self, days: int = 90) -> int:
         """Clean up events older than specified days"""
@@ -383,7 +414,5 @@ class EventService:
         for event in old_events:
             await self.db.delete(event)
         await self.db.commit()
-        
-        self.db.commit()
         
         return count
