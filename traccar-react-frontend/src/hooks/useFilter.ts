@@ -13,6 +13,7 @@ interface UseFilterProps {
   filterSort: string;
   filterMap: boolean;
   positions: Position[];
+  devices?: Device[]; // Add devices as optional prop
   setFilteredDevices: (devices: Device[]) => void;
   setFilteredPositions: (positions: Position[]) => void;
 }
@@ -23,35 +24,43 @@ export const useFilter = ({
   filterSort,
   filterMap,
   positions,
+  devices: inputDevices = [],
   setFilteredDevices,
   setFilteredPositions,
 }: UseFilterProps) => {
   const [devices, setDevices] = useState<Device[]>([]);
 
-  // Fetch devices (this would normally come from a hook)
+  // Use input devices if provided, otherwise create from positions
   useEffect(() => {
-    // This is a placeholder - in real implementation, this would come from useDevices hook
-    // For now, we'll use the positions to create device data
-    const deviceMap = new Map<number, Device>();
-    
-    positions.forEach(position => {
-      const deviceId = position.deviceId || position.device_id || position.unknown_device_id;
-      if (deviceId && !deviceMap.has(deviceId)) {
-        deviceMap.set(deviceId, {
-          id: deviceId,
-          name: `Device ${deviceId}`,
-          unique_id: `device_${deviceId}`,
-          status: 'online',
-          category: 'default',
-          last_update: position.server_time || position.device_time || position.fix_time,
-          group_id: null,
-          disabled: false,
-        });
-      }
-    });
+    if (inputDevices && inputDevices.length > 0) {
+      // Use the real devices data
+      setDevices(inputDevices);
+    } else if (positions && positions.length > 0) {
+      // Fallback: create device data from positions (for backward compatibility)
+      const deviceMap = new Map<number, Device>();
+      
+      positions.forEach(position => {
+        const deviceId = position.deviceId || (position as any).device_id || (position as any).unknown_device_id;
+        if (deviceId && !deviceMap.has(deviceId)) {
+          deviceMap.set(deviceId, {
+            id: deviceId,
+            name: `Device ${deviceId}`,
+            unique_id: `device_${deviceId}`,
+            status: 'online',
+            category: 'default',
+            last_update: (position as any).server_time || (position as any).device_time || position.fixTime,
+            group_id: null,
+            disabled: false,
+          });
+        }
+      });
 
-    setDevices(Array.from(deviceMap.values()));
-  }, [positions]);
+      setDevices(Array.from(deviceMap.values()));
+    } else {
+      // No devices and no positions, clear devices
+      setDevices([]);
+    }
+  }, [positions, inputDevices]);
 
   useEffect(() => {
     let filtered = [...devices];
@@ -98,7 +107,7 @@ export const useFilter = ({
     // Filter positions based on filtered devices
     const deviceIds = new Set(filtered.map(device => device.id));
     const filteredPositions = positions.filter(position => {
-      const deviceId = position.deviceId || position.device_id || position.unknown_device_id;
+      const deviceId = position.deviceId || (position as any).device_id || (position as any).unknown_device_id;
       return deviceId && deviceIds.has(deviceId);
     });
 

@@ -246,8 +246,10 @@ const MapGeofenceEdit: React.FC<MapGeofenceEditProps> = ({
   // Utility functions
   const geofenceToFeature = (geofence: any) => {
     let geometry;
-    if (geofence.area?.startsWith('CIRCLE')) {
-      const [_, lon, lat, radius] = geofence.area.match(/CIRCLE \((\d+\.?\d*) (\d+\.?\d*) (\d+\.?\d*)\)/);
+    const area = typeof geofence.area === 'string' ? geofence.area : '';
+
+    if (area.startsWith('CIRCLE')) {
+      const [_, lon, lat, radius] = area.match(/CIRCLE \((\d+\.?\d*) (\d+\.?\d*) (\d+\.?\d*)\)/);
       // Create a simple polygon approximation for circle
       const points = 32;
       const coordinates = [];
@@ -263,8 +265,8 @@ const MapGeofenceEdit: React.FC<MapGeofenceEditProps> = ({
         type: 'Polygon',
         coordinates: [coordinates]
       };
-    } else if (geofence.area?.startsWith('POLYGON')) {
-      const matches = geofence.area.match(/POLYGON \(\((.*?)\)\)/);
+    } else if (area.startsWith('POLYGON')) {
+      const matches = area.match(/POLYGON \(\((.*?)\)\)/);
       if (matches) {
         const coordinates = matches[1].split(', ').map((coord: string) =>
           coord.split(' ').map(parseFloat)
@@ -317,13 +319,28 @@ const MapGeofenceEdit: React.FC<MapGeofenceEditProps> = ({
 
   // Add draw control to map
   useEffect(() => {
-    if (!map) return;
+    if (!map || !draw) return;
 
-    map.addControl(draw, theme.direction === 'rtl' ? 'top-right' : 'top-left');
+    try {
+      map.addControl(draw, theme.direction === 'rtl' ? 'top-right' : 'top-left');
+    } catch (error) {
+      console.warn('Failed to add draw control:', error);
+      return;
+    }
 
     return () => {
-      if (map && map.removeControl) {
-        map.removeControl(draw);
+      if (map && draw && map.removeControl) {
+        try {
+          // Check if the draw control is still attached to the map
+          if (map.hasControl && map.hasControl(draw)) {
+            map.removeControl(draw);
+          } else if (!map.hasControl) {
+            // Fallback for older versions without hasControl
+            map.removeControl(draw);
+          }
+        } catch (error) {
+          console.warn('Failed to remove draw control:', error);
+        }
       }
     };
   }, [map, draw, theme.direction]);
@@ -364,7 +381,15 @@ const MapGeofenceEdit: React.FC<MapGeofenceEditProps> = ({
     };
 
     map.on('draw.create', handleCreate);
-    return () => map.off('draw.create', handleCreate);
+    return () => {
+      if (map && map.off) {
+        try {
+          map.off('draw.create', handleCreate);
+        } catch (error) {
+          console.warn('Failed to remove draw.create listener:', error);
+        }
+      }
+    };
   }, [map, draw, token, fetchGeofences, navigate]);
 
   // Handle draw delete event
@@ -387,7 +412,15 @@ const MapGeofenceEdit: React.FC<MapGeofenceEditProps> = ({
     };
 
     map.on('draw.delete', handleDelete);
-    return () => map.off('draw.delete', handleDelete);
+    return () => {
+      if (map && map.off) {
+        try {
+          map.off('draw.delete', handleDelete);
+        } catch (error) {
+          console.warn('Failed to remove draw.delete listener:', error);
+        }
+      }
+    };
   }, [map, token, fetchGeofences]);
 
   // Handle draw update event
@@ -420,7 +453,15 @@ const MapGeofenceEdit: React.FC<MapGeofenceEditProps> = ({
     };
 
     map.on('draw.update', handleUpdate);
-    return () => map.off('draw.update', handleUpdate);
+    return () => {
+      if (map && map.off) {
+        try {
+          map.off('draw.update', handleUpdate);
+        } catch (error) {
+          console.warn('Failed to remove draw.update listener:', error);
+        }
+      }
+    };
   }, [map, token, geofences, fetchGeofences]);
 
   // Load geofences into draw

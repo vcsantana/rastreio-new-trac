@@ -129,7 +129,7 @@ const Replay: React.FC = () => {
         to_time: toDate.toISOString(),
       });
 
-      const response = await fetch(`${API_ENDPOINTS.POSITIONS}?${params}`, {
+      const response = await fetch(`${API_ENDPOINTS.POSITIONS_REPLAY}?${params}`, {
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeaders(),

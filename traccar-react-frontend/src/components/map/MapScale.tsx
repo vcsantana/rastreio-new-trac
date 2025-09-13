@@ -21,18 +21,26 @@ const MapScale: React.FC<MapScaleProps> = ({ map }) => {
   useEffect(() => {
     if (!map) return;
 
+    // Add control to map
     map.addControl(control, theme.direction === 'rtl' ? 'bottom-right' : 'bottom-left');
+    
+    // Set default unit to metric (km) after control is added
+    try {
+      control.setUnit('metric');
+    } catch (error) {
+      console.warn('Failed to set scale unit:', error);
+    }
+    
     return () => {
       if (map && map.removeControl) {
-        map.removeControl(control);
+        try {
+          map.removeControl(control);
+        } catch (error) {
+          console.warn('Failed to remove scale control:', error);
+        }
       }
     };
   }, [map, control, theme.direction]);
-
-  // Set default unit to metric (km)
-  useEffect(() => {
-    control.setUnit('metric');
-  }, [control]);
 
   return null;
 };

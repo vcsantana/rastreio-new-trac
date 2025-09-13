@@ -23,6 +23,7 @@ export const API_ENDPOINTS = {
   // Positions
   POSITIONS: `${API_BASE_URL}/api/positions`,
   POSITIONS_LATEST: `${API_BASE_URL}/api/positions/latest`,
+  POSITIONS_REPLAY: `${API_BASE_URL}/api/positions/replay`,
   
   // Unknown Devices
   UNKNOWN_DEVICES: `${API_BASE_URL}/api/unknown-devices`,

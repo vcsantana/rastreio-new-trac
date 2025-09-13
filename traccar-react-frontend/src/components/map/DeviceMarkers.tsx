@@ -193,17 +193,41 @@ const DeviceMarkers: React.FC<DeviceMarkersProps> = ({
       
       try {
         // Remove layers if they exist
-        if (showLabels && map && map.getLayer && map.getLayer(`${layerId}-labels`)) {
-          map.removeLayer(`${layerId}-labels`);
+        if (showLabels && map && map.getLayer && map.removeLayer) {
+          try {
+            if (map.getLayer(`${layerId}-labels`)) {
+              map.removeLayer(`${layerId}-labels`);
+            }
+          } catch (e) {
+            // Layer might not exist, continue
+          }
         }
-        if (map && map.getLayer && map.getLayer(selectedLayerId)) {
-          map.removeLayer(selectedLayerId);
+        if (map && map.getLayer && map.removeLayer) {
+          try {
+            if (map.getLayer(selectedLayerId)) {
+              map.removeLayer(selectedLayerId);
+            }
+          } catch (e) {
+            // Layer might not exist, continue
+          }
         }
-        if (map && map.getLayer && map.getLayer(layerId)) {
-          map.removeLayer(layerId);
+        if (map && map.getLayer && map.removeLayer) {
+          try {
+            if (map.getLayer(layerId)) {
+              map.removeLayer(layerId);
+            }
+          } catch (e) {
+            // Layer might not exist, continue
+          }
         }
-        if (map && map.getSource && map.getSource(sourceId)) {
-          map.removeSource(sourceId);
+        if (map && map.getSource && map.removeSource) {
+          try {
+            if (map.getSource(sourceId)) {
+              map.removeSource(sourceId);
+            }
+          } catch (e) {
+            // Source might not exist, continue
+          }
         }
         
         // Remove event listeners
@@ -216,10 +240,16 @@ const DeviceMarkers: React.FC<DeviceMarkersProps> = ({
           map.off('mouseleave', selectedLayerId, handleMouseLeave);
           
           // Only remove label event listeners if the layer exists
-          if (showLabels && map.getLayer && map.getLayer(`${layerId}-labels`)) {
-            map.off('click', `${layerId}-labels`, handleClick);
-            map.off('mouseenter', `${layerId}-labels`, handleMouseEnter);
-            map.off('mouseleave', `${layerId}-labels`, handleMouseLeave);
+          if (showLabels && map.getLayer && map.off) {
+            try {
+              if (map.getLayer(`${layerId}-labels`)) {
+                map.off('click', `${layerId}-labels`, handleClick);
+                map.off('mouseenter', `${layerId}-labels`, handleMouseEnter);
+                map.off('mouseleave', `${layerId}-labels`, handleMouseLeave);
+              }
+            } catch (e) {
+              // Layer might not exist, continue
+            }
           }
         }
       } catch (error) {

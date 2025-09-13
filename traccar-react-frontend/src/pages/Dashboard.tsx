@@ -40,6 +40,7 @@ const Dashboard: React.FC = () => {
   const [selectedDeviceId, setSelectedDeviceId] = useState<number | undefined>();
   const [selectedGeofenceId, setSelectedGeofenceId] = useState<number | undefined>();
   const [positions, setPositions] = useState<any[]>([]);
+  const [devices, setDevices] = useState<Device[]>([]); // Add devices state
   const [filteredDevices, setFilteredDevices] = useState<Device[]>([]);
   const [filteredPositions, setFilteredPositions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,13 +63,14 @@ const Dashboard: React.FC = () => {
   // Geofences hook
   const { fetchGeofences } = useGeofences();
 
-  // Filter hook
+  // Filter hook - only pass devices after they are loaded
   useFilter({
     keyword,
     filter,
     filterSort,
     filterMap,
     positions,
+    devices: devices.length > 0 ? devices : undefined, // Only pass devices if they exist
     setFilteredDevices,
     setFilteredPositions,
   });
@@ -137,35 +139,9 @@ const Dashboard: React.FC = () => {
       const devicesData = await devicesResponse.json();
       console.log('📱 Devices data:', devicesData.length, 'devices');
 
-      console.log('📡 Fetching unknown devices...');
-      // Fetch unknown devices
-      const unknownDevicesResponse = await fetch('http://localhost:8000/api/unknown-devices', { headers });
-      console.log('📡 Unknown devices response status:', unknownDevicesResponse.status);
-      if (unknownDevicesResponse.ok) {
-        const unknownDevicesData = await unknownDevicesResponse.json();
-        console.log('📱 Unknown devices data:', unknownDevicesData.length, 'unknown devices');
-        
-        // Convert unknown devices to device format for compatibility
-        const convertedUnknownDevices = unknownDevicesData.map((unknownDevice: any) => ({
-          id: unknownDevice.id,
-          name: `Unknown ${unknownDevice.unique_id}`,
-          unique_id: unknownDevice.unique_id,
-          protocol: unknownDevice.protocol,
-          status: 'online', // Assume unknown devices are online if they have recent data
-          category: 'unknown',
-          last_update: unknownDevice.last_seen,
-          is_unknown: true
-        }));
-        
-        console.log('🔍 Converted unknown devices:', convertedUnknownDevices);
-        
-        // Combine registered and unknown devices
-        devicesData.push(...convertedUnknownDevices);
-        console.log('📱 Total devices (registered + unknown):', devicesData.length);
-        console.log('📱 All devices:', devicesData);
-      } else {
-        console.log('⚠️ Failed to fetch unknown devices, continuing with registered devices only');
-      }
+      // Dashboard should only show registered devices
+      // Unknown devices are handled separately in /unknown-devices page
+      console.log('📱 Using only registered devices for dashboard');
 
       console.log('📍 Fetching positions...');
       // Fetch positions
@@ -181,13 +157,14 @@ const Dashboard: React.FC = () => {
       // Transform positions to match the expected format
       const transformedPositions = positionsData.map((position: any) => ({
         ...position,
-        deviceId: position.device_id || position.unknown_device_id,
+        deviceId: position.device_id, // API now returns correct device_id for registered devices
         server_time: position.server_time || position.device_time,
         valid: position.valid !== false,
         protocol: position.protocol || 'unknown',
       }));
 
-      // Devices are stored in filteredDevices
+      // Store devices and positions in state
+      setDevices(devicesData); // Store the real devices data
       setPositions(transformedPositions);
       setError(null);
       setLoading(false);

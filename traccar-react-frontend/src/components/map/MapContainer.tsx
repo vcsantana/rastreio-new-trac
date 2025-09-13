@@ -14,6 +14,7 @@ interface MapContainerProps {
 // Default map styles - using a simple OSM style to avoid loading issues
 const DEFAULT_STYLE = {
   version: 8,
+  glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
   sources: {
     'osm': {
       type: 'raster',

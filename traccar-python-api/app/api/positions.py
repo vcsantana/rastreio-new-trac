@@ -11,6 +11,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.position import Position
 from app.models.device import Device
+from app.models.unknown_device import UnknownDevice
 from app.schemas.position import PositionResponse, PositionCreate
 from app.api.auth import get_current_user
 from app.services.websocket_service import websocket_service
@@ -28,11 +29,12 @@ async def get_positions(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get positions with optional filtering"""
+    """Get positions with optional filtering - ONLY for registered devices"""
     query = select(Position)
     
-    # Apply filters
-    filters = []
+    # Apply filters - only for registered devices (device_id is not null)
+    filters = [Position.device_id.isnot(None)]  # Only registered devices
+    
     if device_id:
         filters.append(Position.device_id == device_id)
     if from_time:
@@ -40,8 +42,7 @@ async def get_positions(
     if to_time:
         filters.append(Position.server_time <= to_time)
     
-    if filters:
-        query = query.where(and_(*filters))
+    query = query.where(and_(*filters))
     
     # Order by time descending and limit
     query = query.order_by(Position.server_time.desc()).limit(limit)
@@ -51,21 +52,87 @@ async def get_positions(
     
     return [PositionResponse.from_orm(position) for position in positions]
 
+@router.get("/replay", response_model=List[PositionResponse])
+async def get_positions_for_replay(
+    device_id: Optional[int] = Query(None, description="Filter by device ID"),
+    from_time: Optional[datetime] = Query(None, description="Start time filter"),
+    to_time: Optional[datetime] = Query(None, description="End time filter"),
+    limit: int = Query(1000, le=5000, description="Maximum number of positions"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get positions for replay - includes positions from unknown devices registered to devices"""
+    
+    if device_id:
+        # When filtering by device_id, include positions from unknown devices registered to this device
+        # First get positions directly associated with the device
+        direct_query = select(Position).where(Position.device_id == device_id)
+        
+        # Then get positions from unknown devices registered to this device
+        unknown_query = select(Position).join(
+            UnknownDevice, Position.unknown_device_id == UnknownDevice.id
+        ).where(
+            UnknownDevice.is_registered == True,
+            UnknownDevice.registered_device_id == device_id
+        )
+        
+        # Apply time filters to both queries
+        if from_time:
+            direct_query = direct_query.where(Position.server_time >= from_time)
+            unknown_query = unknown_query.where(Position.server_time >= from_time)
+        if to_time:
+            direct_query = direct_query.where(Position.server_time <= to_time)
+            unknown_query = unknown_query.where(Position.server_time <= to_time)
+        
+        # Execute both queries
+        direct_result = await db.execute(direct_query)
+        unknown_result = await db.execute(unknown_query)
+        
+        # Combine results
+        direct_positions = direct_result.scalars().all()
+        unknown_positions = unknown_result.scalars().all()
+        all_positions = list(direct_positions) + list(unknown_positions)
+        
+        # Sort by time descending and limit
+        all_positions.sort(key=lambda p: p.server_time, reverse=True)
+        positions = all_positions[:limit]
+        
+    else:
+        # No device_id filter, return only registered device positions
+        query = select(Position).where(Position.device_id.isnot(None))
+        
+        # Apply filters
+        filters = []
+        if from_time:
+            filters.append(Position.server_time >= from_time)
+        if to_time:
+            filters.append(Position.server_time <= to_time)
+        
+        if filters:
+            query = query.where(and_(*filters))
+        
+        # Order by time descending and limit
+        query = query.order_by(Position.server_time.desc()).limit(limit)
+        
+        result = await db.execute(query)
+        positions = result.scalars().all()
+    
+    return [PositionResponse.from_orm(position) for position in positions]
+
 @router.get("/latest", response_model=List[PositionResponse])
 async def get_latest_positions(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get the latest position for each device (including unknown devices)"""
+    """Get the latest position for each registered device ONLY"""
     from app.api.groups import get_user_accessible_groups
-    from app.models.unknown_device import UnknownDevice
     
     # Get accessible groups for the user
     accessible_groups = await get_user_accessible_groups(db, current_user.id, current_user.is_admin)
     
     latest_positions = []
     
-    # Get latest positions from registered devices
+    # Get latest positions from registered devices ONLY
     if current_user.is_admin or accessible_groups:
         # Build query with group filtering
         query = select(Device)
@@ -81,31 +148,51 @@ async def get_latest_positions(
         devices = devices_result.scalars().all()
         
         for device in devices:
-            position_result = await db.execute(
+            # Get latest position directly associated with the device
+            direct_position_result = await db.execute(
                 select(Position)
                 .where(Position.device_id == device.id)
                 .order_by(Position.server_time.desc())
                 .limit(1)
             )
-            position = position_result.scalar_one_or_none()
-            if position:
-                latest_positions.append(PositionResponse.from_orm(position))
-    
-    # Get latest positions from unknown devices (only for admins or if user has group permissions)
-    if current_user.is_admin or accessible_groups:
-        unknown_devices_result = await db.execute(select(UnknownDevice))
-        unknown_devices = unknown_devices_result.scalars().all()
-        
-        for unknown_device in unknown_devices:
-            position_result = await db.execute(
+            direct_position = direct_position_result.scalar_one_or_none()
+            
+            # Get latest position from unknown devices registered to this device
+            unknown_position_result = await db.execute(
                 select(Position)
-                .where(Position.unknown_device_id == unknown_device.id)
+                .join(UnknownDevice, Position.unknown_device_id == UnknownDevice.id)
+                .where(
+                    UnknownDevice.is_registered == True,
+                    UnknownDevice.registered_device_id == device.id
+                )
                 .order_by(Position.server_time.desc())
                 .limit(1)
             )
-            position = position_result.scalar_one_or_none()
-            if position:
-                latest_positions.append(PositionResponse.from_orm(position))
+            unknown_position = unknown_position_result.scalar_one_or_none()
+            
+            # Use the most recent position (direct or from unknown device)
+            latest_position = None
+            if direct_position and unknown_position:
+                # Compare timestamps and use the most recent
+                if direct_position.server_time >= unknown_position.server_time:
+                    latest_position = direct_position
+                else:
+                    latest_position = unknown_position
+            elif direct_position:
+                latest_position = direct_position
+            elif unknown_position:
+                latest_position = unknown_position
+            
+            if latest_position:
+                # Create a modified position response with the registered device_id
+                position_dict = {
+                    **latest_position.__dict__,
+                    'device_id': device.id,  # Use the registered device ID
+                    'unknown_device_id': None  # Clear the unknown device ID for the response
+                }
+                # Remove SQLAlchemy internal attributes
+                position_dict.pop('_sa_instance_state', None)
+                latest_positions.append(PositionResponse(**position_dict))
     
     return latest_positions
 
@@ -118,7 +205,7 @@ async def get_device_history(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get position history for a specific device"""
+    """Get position history for a specific registered device ONLY"""
     # Verify device exists
     device_result = await db.execute(select(Device).where(Device.id == device_id))
     device = device_result.scalar_one_or_none()
@@ -129,7 +216,7 @@ async def get_device_history(
             detail="Device not found"
         )
     
-    # Build query for device positions
+    # Get positions ONLY directly associated with the registered device
     query = select(Position).where(Position.device_id == device_id)
     
     # Apply time filters
@@ -138,7 +225,7 @@ async def get_device_history(
     if to_time:
         query = query.where(Position.server_time <= to_time)
     
-    # Order by time ascending for route tracking
+    # Order by time ascending for route tracking and limit
     query = query.order_by(Position.server_time.asc()).limit(limit)
     
     result = await db.execute(query)
