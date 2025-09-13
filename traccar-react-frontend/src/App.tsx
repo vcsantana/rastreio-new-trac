@@ -27,6 +27,7 @@ const Events = React.lazy(() => import('./pages/Events'));
 const Reports = React.lazy(() => import('./pages/ReportsPage'));
 const Replay = React.lazy(() => import('./pages/Replay'));
 const Settings = React.lazy(() => import('./pages/Settings'));
+const ServerSettings = React.lazy(() => import('./pages/ServerSettings'));
 const LogsViewer = React.lazy(() => import('./components/LogsViewer'));
 const UnknownDevices = React.lazy(() => import('./pages/UnknownDevices'));
 const Users = React.lazy(() => import('./pages/Users'));
@@ -100,6 +101,11 @@ function App() {
                         <Route path="settings" element={
                           <AdminRoute>
                             <Settings />
+                          </AdminRoute>
+                        } />
+                        <Route path="settings/server" element={
+                          <AdminRoute>
+                            <ServerSettings />
                           </AdminRoute>
                         } />
                       </Route>
