@@ -228,10 +228,19 @@ class HTTPProtocolServer:
                 attributes=json.dumps(position_create.attributes or {})  # Convert to JSON string
             )
             
+            # Update device status to online and last_update
+            device.status = "online"
+            device.last_update = datetime.utcnow()
+            
             db.add(position)
             await db.commit()
+            await db.refresh(position)
             
-            logger.info("Position saved", device_id=device_id, position_id=position.id)
+            # Update device position_id
+            device.position_id = position.id
+            await db.commit()
+            
+            logger.info("Position saved for device", device_id=device_id, position_id=position.id, status="online")
             
             # Broadcast via WebSocket
             await websocket_service.broadcast_position(position)

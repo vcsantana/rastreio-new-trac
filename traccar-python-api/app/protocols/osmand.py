@@ -250,7 +250,9 @@ class OsmAndProtocolHandler(BaseProtocolHandler):
             speed = get_param('speed')
             if speed:
                 try:
-                    position_data['speed'] = float(speed) * 1.94384  # Convert m/s to knots
+                    speed_value = float(speed)
+                    if speed_value >= 0:  # Only set positive speeds
+                        position_data['speed'] = speed_value * 1.94384  # Convert m/s to knots
                 except ValueError:
                     pass
             
@@ -258,7 +260,9 @@ class OsmAndProtocolHandler(BaseProtocolHandler):
             course = get_param('course') or get_param('heading')
             if course:
                 try:
-                    position_data['course'] = float(course)
+                    course_value = float(course)
+                    if 0 <= course_value <= 360:  # Only set valid course values
+                        position_data['course'] = course_value
                 except ValueError:
                     pass
             
@@ -357,14 +361,18 @@ class OsmAndProtocolHandler(BaseProtocolHandler):
                 # Parse speed
                 if 'speed' in coords:
                     try:
-                        position_data['speed'] = float(coords['speed']) * 1.94384  # Convert m/s to knots
+                        speed_value = float(coords['speed'])
+                        if speed_value >= 0:  # Only set positive speeds
+                            position_data['speed'] = speed_value * 1.94384  # Convert m/s to knots
                     except (ValueError, TypeError):
                         pass
                 
                 # Parse heading
                 if 'heading' in coords:
                     try:
-                        position_data['course'] = float(coords['heading'])
+                        course_value = float(coords['heading'])
+                        if 0 <= course_value <= 360:  # Only set valid course values
+                            position_data['course'] = course_value
                     except (ValueError, TypeError):
                         pass
                 
