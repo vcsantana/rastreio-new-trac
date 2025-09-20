@@ -27,6 +27,14 @@ class Device(Base):
     license_plate = Column(String(20))  # Placa do veículo
     disabled = Column(Boolean, default=False)
     
+    # Client Management Fields for Central de Monitoramento
+    client_code = Column(String(10))  # "#16", "#13", "#14" etc
+    client_status = Column(String(20), default="active")  # active, delinquent, test, lost, removal
+    priority_level = Column(Integer, default=3)  # 1=critical, 2=high, 3=normal, 4=low, 5=minimal
+    fidelity_score = Column(Integer, default=3)  # 1-5 stars for client satisfaction
+    last_service_date = Column(DateTime(timezone=True))  # Last service/maintenance
+    notes = Column(Text)  # Client notes and observations
+    
     # Relationships
     group_id = Column(Integer, ForeignKey("groups.id"))
     person_id = Column(Integer, ForeignKey("persons.id"))  # Associação com pessoa
@@ -93,3 +101,61 @@ class Device(Base):
         hours = int(self.hours)
         minutes = int((self.hours - hours) * 60)
         return f"{hours}:{minutes:02d}"
+    
+    def get_communication_status(self) -> dict:
+        """Get communication status with color coding"""
+        from datetime import datetime, timedelta
+        
+        if not self.last_update:
+            return {"status": "unknown", "color": "gray", "minutes_ago": None}
+        
+        now = datetime.utcnow()
+        if self.last_update.tzinfo is None:
+            # If last_update is naive, assume UTC
+            last_update_utc = self.last_update
+        else:
+            last_update_utc = self.last_update.utctimetuple()
+            last_update_utc = datetime(*last_update_utc[:6])
+        
+        minutes_ago = (now - last_update_utc).total_seconds() / 60
+        
+        if minutes_ago <= 10:
+            return {"status": "excellent", "color": "green", "minutes_ago": int(minutes_ago)}
+        elif minutes_ago <= 45:
+            return {"status": "normal", "color": "yellow", "minutes_ago": int(minutes_ago)}
+        elif minutes_ago <= 120:
+            return {"status": "attention", "color": "orange", "minutes_ago": int(minutes_ago)}
+        else:
+            return {"status": "critical", "color": "red", "minutes_ago": int(minutes_ago)}
+    
+    def is_critical(self) -> bool:
+        """Check if device requires critical attention"""
+        comm_status = self.get_communication_status()
+        return (
+            self.client_status in ['delinquent', 'lost'] or
+            self.priority_level <= 2 or
+            comm_status["color"] == "red" or
+            self.disabled
+        )
+    
+    def get_client_type_display(self) -> str:
+        """Get display text for client type"""
+        type_map = {
+            'active': 'Ativo',
+            'delinquent': 'Inadimplente',
+            'test': 'Teste',
+            'lost': 'Perdido',
+            'removal': 'Remoção'
+        }
+        return type_map.get(self.client_status, 'Desconhecido')
+    
+    def get_priority_display(self) -> str:
+        """Get display text for priority level"""
+        priority_map = {
+            1: 'Crítico',
+            2: 'Alto',
+            3: 'Normal',
+            4: 'Baixo',
+            5: 'Mínimo'
+        }
+        return priority_map.get(self.priority_level, 'Normal')

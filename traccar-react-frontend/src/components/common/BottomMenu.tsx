@@ -16,15 +16,14 @@ import {
   Description as ReportsIcon,
   Settings as SettingsIcon,
   Person as PersonIcon,
-  Assessment as AssessmentIcon,
   BugReport as LogsIcon,
   Devices as DevicesIcon,
   LocationOn as GeofencesIcon,
   Group as GroupsIcon,
   People as PeopleIcon,
   Security as SecurityIcon,
-  DifferenceOutlined,
   Rotate90DegreesCcwOutlined,
+  MonitorHeart as MonitoringIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks/useAuth';
 import { useWebSocket } from '../../hooks/useWebSocket';
@@ -46,6 +45,9 @@ const BottomMenu: React.FC = () => {
   const currentSelection = () => {
     if (location.pathname === '/dashboard' || location.pathname === '/') {
       return 'map';
+    }
+    if (location.pathname.startsWith('/client-monitoring')) {
+      return 'monitoring';
     }
     if (location.pathname.startsWith('/reports') || location.pathname.startsWith('/logs')) {
       return 'reports';
@@ -97,6 +99,9 @@ const BottomMenu: React.FC = () => {
     switch (value) {
       case 'map':
         navigate('/dashboard');
+        break;
+      case 'monitoring':
+        navigate('/client-monitoring');
         break;
       case 'reports':
         handleReportsMenu(event as any);
@@ -152,6 +157,11 @@ const BottomMenu: React.FC = () => {
               </Badge>
             }
             value="map"
+          />
+          <BottomNavigationAction
+            label="Central de Monitoramento"
+            icon={<MonitoringIcon />}
+            value="monitoring"
           />
           <BottomNavigationAction
             label={t('menu.reports')}
@@ -259,6 +269,11 @@ const BottomMenu: React.FC = () => {
             </Badge>
           }
           value="map"
+        />
+        <BottomNavigationAction
+          label="Central"
+          icon={<MonitoringIcon />}
+          value="monitoring"
         />
         <BottomNavigationAction
           label={t('menu.reports')}

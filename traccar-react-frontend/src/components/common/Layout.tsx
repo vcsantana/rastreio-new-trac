@@ -34,6 +34,7 @@ import {
   ListAlt as LogsIcon,
   NetworkCheck as UnknownDevicesIcon,
   People as UsersIcon,
+  Assessment as ClientMonitoringIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -71,6 +72,12 @@ export const Layout: React.FC = () => {
       label: t('navigation.dashboard'),
       path: '/dashboard',
       icon: <DashboardIcon />,
+    },
+    {
+      id: 'client-monitoring',
+      label: 'Central de Monitoramento',
+      path: '/client-monitoring',
+      icon: <ClientMonitoringIcon />,
     },
     {
       id: 'reports',
@@ -170,7 +177,8 @@ export const Layout: React.FC = () => {
                         location.pathname.startsWith('/geofences') ||
                         location.pathname.startsWith('/logs') ||
                         location.pathname.startsWith('/unknown-devices') ||
-                        location.pathname.startsWith('/users');
+                        location.pathname.startsWith('/users') ||
+                        location.pathname.startsWith('/client-monitoring');
 
   // Filter navigation items based on user permissions
   const navigationItems = allNavigationItems.filter(item => {

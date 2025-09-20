@@ -31,6 +31,7 @@ const ServerSettings = React.lazy(() => import('./pages/ServerSettings'));
 const LogsViewer = React.lazy(() => import('./components/LogsViewer'));
 const UnknownDevices = React.lazy(() => import('./pages/UnknownDevices'));
 const Users = React.lazy(() => import('./pages/Users'));
+const ClientMonitoring = React.lazy(() => import('./pages/ClientMonitoringSimple'));
 const Login = React.lazy(() => import('./pages/Login'));
 
 function App() {
@@ -76,6 +77,7 @@ function App() {
                         <Route path="geofences" element={<Geofences />} />
                         <Route path="events" element={<Events />} />
                         <Route path="replay" element={<Replay />} />
+                        <Route path="client-monitoring" element={<ClientMonitoring />} />
                         
                         {/* Admin-only routes */}
                         <Route path="reports" element={

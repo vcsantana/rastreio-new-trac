@@ -23,6 +23,7 @@ import {
   ViewList as ViewListIcon,
   Add as AddIcon,
   Tune as TuneIcon,
+  Assessment as MonitoringIcon,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { useDevices } from '../../hooks/useDevices';
@@ -95,6 +96,22 @@ const MainToolbar: React.FC<MainToolbarProps> = ({
       >
         {devicesOpen ? <MapIcon /> : <ViewListIcon />}
       </IconButton>
+
+      {/* Quick Access to Client Monitoring */}
+      <Tooltip title="Central de Monitoramento">
+        <IconButton 
+          onClick={() => navigate('/client-monitoring')}
+          size="small"
+          sx={{
+            color: theme.palette.primary.main,
+            '&:hover': {
+              backgroundColor: theme.palette.primary.main + '20',
+            }
+          }}
+        >
+          <MonitoringIcon />
+        </IconButton>
+      </Tooltip>
       
       <OutlinedInput
         ref={inputRef}
@@ -108,7 +125,7 @@ const MainToolbar: React.FC<MainToolbarProps> = ({
             <IconButton 
               size="small" 
               edge="end" 
-              onClick={(e) => setFilterAnchorEl(inputRef.current)}
+              onClick={() => setFilterAnchorEl(inputRef.current)}
             >
               <Badge 
                 color="info" 
