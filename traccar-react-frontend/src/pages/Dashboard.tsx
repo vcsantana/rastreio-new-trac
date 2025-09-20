@@ -274,6 +274,8 @@ const Dashboard: React.FC = () => {
             sx={{
               pointerEvents: 'auto',
               zIndex: 6,
+              marginLeft: desktop && devicesOpen ? '372px' : '0px', // Same margin as map
+              transition: 'margin-left 0.3s ease',
             }}
           >
             <MainToolbar
@@ -294,25 +296,37 @@ const Dashboard: React.FC = () => {
       )}
 
       {/* Main Content Area */}
-      <Box sx={{ flex: 1, display: 'flex', position: 'relative' }}>
+      <Box sx={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
         {/* Desktop Map - Full screen */}
         {desktop && (
-          <MapView
-            positions={filteredPositions}
-            devices={filteredDevices.map(device => ({
-              id: device.id,
-              name: device.name,
-              status: device.status || 'unknown',
-              category: device.category || 'unknown',
-              lastUpdate: device.last_update || new Date().toISOString(),
-            }))}
-            selectedDeviceId={selectedDeviceId}
-            onDeviceSelect={onDeviceSelect}
-            showGeofences={true}
-            selectedGeofenceId={selectedGeofenceId}
-            onGeofenceSelect={(geofence: Geofence) => setSelectedGeofenceId(geofence.id)}
-            style={{ width: '100%', height: '100%' }}
-          />
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              marginLeft: devicesOpen ? '372px' : '0px', // 340px sidebar width + 32px margin
+              transition: 'margin-left 0.3s ease',
+            }}
+          >
+            <MapView
+              positions={filteredPositions}
+              devices={filteredDevices.map(device => ({
+                id: device.id,
+                name: device.name,
+                status: device.status || 'unknown',
+                category: device.category || 'unknown',
+                lastUpdate: device.last_update || new Date().toISOString(),
+              }))}
+              selectedDeviceId={selectedDeviceId}
+              onDeviceSelect={onDeviceSelect}
+              showGeofences={true}
+              selectedGeofenceId={selectedGeofenceId}
+              onGeofenceSelect={(geofence: Geofence) => setSelectedGeofenceId(geofence.id)}
+              style={{ width: '100%', height: '100%' }}
+            />
+          </Box>
         )}
 
         {/* Desktop Overlay Panels */}
@@ -323,9 +337,9 @@ const Dashboard: React.FC = () => {
               sx={{
                 position: 'absolute',
                 left: 16,
-                top: 80,
-                width: 320,
-                height: 'calc(100% - 120px)',
+                top: 16,
+                width: 340,
+                height: 'calc(100% - 32px)',
                 zIndex: 100,
                 pointerEvents: 'none',
                 display: 'flex',
