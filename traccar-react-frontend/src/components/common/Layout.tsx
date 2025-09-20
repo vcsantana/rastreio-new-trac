@@ -39,6 +39,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { useAuth } from '../../hooks/useAuth';
+import { useTranslation } from '../../hooks/useTranslation';
 import { RootState } from '../../store';
 import { toggleTheme } from '../../store/slices/uiSlice';
 import { WebSocketStatus } from './WebSocketStatus';
@@ -53,80 +54,6 @@ interface NavigationItem {
   icon: React.ReactElement;
 }
 
-// Main navigation items (like original Traccar)
-const mainNavigationItems: NavigationItem[] = [
-  {
-    id: 'dashboard',
-    label: 'Map',
-    path: '/dashboard',
-    icon: <DashboardIcon />,
-  },
-  {
-    id: 'reports',
-    label: 'Reports',
-    path: '/reports',
-    icon: <ReportsIcon />,
-  },
-];
-
-// Settings navigation items (admin only)
-const settingsNavigationItems: NavigationItem[] = [
-  {
-    id: 'groups',
-    label: 'Groups',
-    path: '/groups',
-    icon: <GroupsIcon />,
-  },
-  {
-    id: 'persons',
-    label: 'Persons',
-    path: '/persons',
-    icon: <PersonsIcon />,
-  },
-  {
-    id: 'commands',
-    label: 'Commands',
-    path: '/commands',
-    icon: <CommandsIcon />,
-  },
-  {
-    id: 'geofences',
-    label: 'Geofences',
-    path: '/geofences',
-    icon: <GeofencesIcon />,
-  },
-  {
-    id: 'logs',
-    label: 'Logs',
-    path: '/logs',
-    icon: <LogsIcon />,
-  },
-  {
-    id: 'unknown-devices',
-    label: 'Unknown Devices',
-    path: '/unknown-devices',
-    icon: <UnknownDevicesIcon />,
-  },
-  {
-    id: 'users',
-    label: 'Users',
-    path: '/users',
-    icon: <UsersIcon />,
-  },
-  {
-    id: 'settings',
-    label: 'Settings',
-    path: '/settings',
-    icon: <SettingsIcon />,
-  },
-];
-
-// Combine all navigation items
-const allNavigationItems: NavigationItem[] = [
-  ...mainNavigationItems,
-  ...settingsNavigationItems,
-];
-
 // Admin-only navigation items
 const adminOnlyItems = ['logs', 'unknown-devices', 'users', 'settings'];
 
@@ -135,6 +62,81 @@ export const Layout: React.FC = () => {
   const location = useLocation();
   const dispatch = useDispatch();
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
+
+  // Main navigation items (like original Traccar)
+  const mainNavigationItems: NavigationItem[] = [
+    {
+      id: 'dashboard',
+      label: t('navigation.dashboard'),
+      path: '/dashboard',
+      icon: <DashboardIcon />,
+    },
+    {
+      id: 'reports',
+      label: t('navigation.reports'),
+      path: '/reports',
+      icon: <ReportsIcon />,
+    },
+  ];
+
+  // Settings navigation items (admin only)
+  const settingsNavigationItems: NavigationItem[] = [
+    {
+      id: 'groups',
+      label: t('navigation.groups'),
+      path: '/groups',
+      icon: <GroupsIcon />,
+    },
+    {
+      id: 'persons',
+      label: t('navigation.persons'),
+      path: '/persons',
+      icon: <PersonsIcon />,
+    },
+    {
+      id: 'commands',
+      label: t('navigation.commands'),
+      path: '/commands',
+      icon: <CommandsIcon />,
+    },
+    {
+      id: 'geofences',
+      label: t('navigation.geofences'),
+      path: '/geofences',
+      icon: <GeofencesIcon />,
+    },
+    {
+      id: 'logs',
+      label: t('navigation.logs'),
+      path: '/logs',
+      icon: <LogsIcon />,
+    },
+    {
+      id: 'unknown-devices',
+      label: t('navigation.unknownDevices'),
+      path: '/unknown-devices',
+      icon: <UnknownDevicesIcon />,
+    },
+    {
+      id: 'users',
+      label: t('navigation.users'),
+      path: '/users',
+      icon: <UsersIcon />,
+    },
+    {
+      id: 'settings',
+      label: t('navigation.settings'),
+      path: '/settings',
+      icon: <SettingsIcon />,
+    },
+  ];
+
+  // Combine all navigation items
+  const allNavigationItems: NavigationItem[] = [
+    ...mainNavigationItems,
+    ...settingsNavigationItems,
+  ];
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -315,14 +317,14 @@ export const Layout: React.FC = () => {
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
         <MenuItem onClick={() => navigate('/settings/user')}>
-          <Avatar /> Profile
+          <Avatar /> {t('auth.profile')}
         </MenuItem>
         <Divider />
         <MenuItem onClick={handleLogout}>
           <ListItemIcon>
             <LogoutIcon fontSize="small" />
           </ListItemIcon>
-          Logout
+          {t('auth.logout')}
         </MenuItem>
       </Menu>
     </Box>

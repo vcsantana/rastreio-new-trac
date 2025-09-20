@@ -27,6 +27,7 @@ import {
 import { useTheme } from '@mui/material/styles';
 import { useDevices } from '../../hooks/useDevices';
 import { useGroups } from '../../hooks/useGroups';
+import { useTranslation } from '../../hooks/useTranslation';
 import DeviceRow from './DeviceRow';
 
 interface MainToolbarProps {
@@ -63,6 +64,7 @@ const MainToolbar: React.FC<MainToolbarProps> = ({
   const navigate = useNavigate();
   const { devices } = useDevices();
   const { groups } = useGroups();
+  const { t } = useTranslation();
 
   const toolbarRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -96,7 +98,7 @@ const MainToolbar: React.FC<MainToolbarProps> = ({
       
       <OutlinedInput
         ref={inputRef}
-        placeholder="Search devices..."
+        placeholder={t('menu.searchDevices')}
         value={keyword}
         onChange={(e) => setKeyword(e.target.value)}
         onFocus={() => setDevicesAnchorEl(toolbarRef.current)}
@@ -157,7 +159,7 @@ const MainToolbar: React.FC<MainToolbarProps> = ({
             onClick={() => setDevicesOpen(true)}
           >
             <ListItemText
-              primary="Show all devices"
+              primary={t('menu.showAllDevices')}
               style={{ textAlign: 'center' }}
             />
           </ListItemButton>
@@ -182,29 +184,29 @@ const MainToolbar: React.FC<MainToolbarProps> = ({
           width: 300,
         }}>
           <FormControl size="small">
-            <InputLabel>Device Status</InputLabel>
+            <InputLabel>{t('menu.deviceStatus')}</InputLabel>
             <Select
-              label="Device Status"
+              label={t('menu.deviceStatus')}
               value={filter.statuses}
               onChange={(e) => handleFilterChange('statuses', e.target.value)}
               multiple
             >
               <MenuItem value="online">
-                Online ({deviceStatusCount('online')})
+                {t('menu.online')} ({deviceStatusCount('online')})
               </MenuItem>
               <MenuItem value="offline">
-                Offline ({deviceStatusCount('offline')})
+                {t('menu.offline')} ({deviceStatusCount('offline')})
               </MenuItem>
               <MenuItem value="unknown">
-                Unknown ({deviceStatusCount('unknown')})
+                {t('menu.unknown')} ({deviceStatusCount('unknown')})
               </MenuItem>
             </Select>
           </FormControl>
 
           <FormControl size="small">
-            <InputLabel>Groups</InputLabel>
+            <InputLabel>{t('menu.groups')}</InputLabel>
             <Select
-              label="Groups"
+              label={t('menu.groups')}
               value={filter.groups}
               onChange={(e) => handleFilterChange('groups', e.target.value)}
               multiple
@@ -218,16 +220,16 @@ const MainToolbar: React.FC<MainToolbarProps> = ({
           </FormControl>
 
           <FormControl size="small">
-            <InputLabel>Sort By</InputLabel>
+            <InputLabel>{t('menu.sortBy')}</InputLabel>
             <Select
-              label="Sort By"
+              label={t('menu.sortBy')}
               value={filterSort}
               onChange={(e) => setFilterSort(e.target.value)}
               displayEmpty
             >
-              <MenuItem value="">None</MenuItem>
-              <MenuItem value="name">Name</MenuItem>
-              <MenuItem value="lastUpdate">Last Update</MenuItem>
+              <MenuItem value="">{t('menu.none')}</MenuItem>
+              <MenuItem value="name">{t('menu.name')}</MenuItem>
+              <MenuItem value="lastUpdate">{t('menu.lastUpdate')}</MenuItem>
             </Select>
           </FormControl>
 
@@ -239,7 +241,7 @@ const MainToolbar: React.FC<MainToolbarProps> = ({
                   onChange={(e) => setFilterMap(e.target.checked)} 
                 />
               }
-              label="Filter Map"
+              label={t('menu.filterMap')}
             />
           </FormGroup>
         </div>
@@ -250,7 +252,7 @@ const MainToolbar: React.FC<MainToolbarProps> = ({
         onClick={() => navigate('/devices')}
         size="small"
       >
-        <Tooltip title="Add Device">
+        <Tooltip title={t('menu.addDevice')}>
           <AddIcon />
         </Tooltip>
       </IconButton>

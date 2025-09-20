@@ -12,11 +12,13 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from '../hooks/useTranslation';
 
 const Login: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -31,7 +33,7 @@ const Login: React.FC = () => {
       await login(email, password);
       navigate('/dashboard');
     } catch (err) {
-      setError('Login failed. Please check your credentials.');
+      setError(t('auth.loginFailed'));
     } finally {
       setLoading(false);
     }
@@ -51,10 +53,10 @@ const Login: React.FC = () => {
           <CardContent sx={{ p: 4 }}>
             <Box sx={{ textAlign: 'center', mb: 4 }}>
               <Typography variant="h4" component="h1" gutterBottom>
-                Traccar
+                Protege Express
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Sign in to your account
+                {t('auth.signInToAccount')}
               </Typography>
             </Box>
 
@@ -67,7 +69,7 @@ const Login: React.FC = () => {
             <form onSubmit={handleSubmit}>
               <TextField
                 fullWidth
-                label="Email"
+                label={t('auth.email')}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -78,7 +80,7 @@ const Login: React.FC = () => {
               />
               <TextField
                 fullWidth
-                label="Password"
+                label={t('auth.password')}
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -94,17 +96,17 @@ const Login: React.FC = () => {
                 disabled={loading}
                 sx={{ mt: 3, mb: 2 }}
               >
-                {loading ? 'Signing in...' : 'Sign In'}
+                {loading ? t('auth.signingIn') : t('auth.signIn')}
               </Button>
             </form>
 
             <Box sx={{ mt: 2, p: 2, backgroundColor: theme.palette.grey[50], borderRadius: 1 }}>
               <Typography variant="caption" color="text.secondary">
-                Demo credentials:
+                {t('auth.demoCredentials')}
                 <br />
-                Email: admin@traccar.org
+                {t('auth.demoEmail')}
                 <br />
-                Password: admin
+                {t('auth.demoPassword')}
               </Typography>
             </Box>
           </CardContent>

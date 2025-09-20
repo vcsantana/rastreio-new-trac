@@ -28,6 +28,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks/useAuth';
 import { useWebSocket } from '../../hooks/useWebSocket';
+import { useTranslation } from '../../hooks/useTranslation';
 
 const BottomMenu: React.FC = () => {
   const navigate = useNavigate();
@@ -36,6 +37,7 @@ const BottomMenu: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user, logout } = useAuth();
   const { connected } = useWebSocket();
+  const { t } = useTranslation();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [reportsAnchorEl, setReportsAnchorEl] = useState<null | HTMLElement>(null);
@@ -143,7 +145,7 @@ const BottomMenu: React.FC = () => {
           }}
         >
           <BottomNavigationAction
-            label="Map"
+            label={t('menu.map')}
             icon={
               <Badge color="error" variant="dot" overlap="circular" invisible={connected}>
                 <MapIcon />
@@ -152,17 +154,17 @@ const BottomMenu: React.FC = () => {
             value="map"
           />
           <BottomNavigationAction
-            label="Reports"
+            label={t('menu.reports')}
             icon={<ReportsIcon />}
             value="reports"
           />
           <BottomNavigationAction
-            label="Settings"
+            label={t('menu.settings')}
             icon={<SettingsIcon />}
             value="settings"
           />
           <BottomNavigationAction
-            label="Account"
+            label={t('menu.account')}
             icon={<PersonIcon />}
             value="account"
           />
@@ -176,12 +178,12 @@ const BottomMenu: React.FC = () => {
         >
           <MenuItem onClick={() => { handleReportsClose(); navigate('/replay'); }}>
           <Rotate90DegreesCcwOutlined sx={{ mr: 1 }} />
-            <Typography>Replay</Typography>
+            <Typography>{t('menu.replay')}</Typography>
           </MenuItem>
          
           <MenuItem onClick={() => { handleReportsClose(); navigate('/logs'); }}>
             <LogsIcon sx={{ mr: 1 }} />
-            <Typography>Logs</Typography>
+            <Typography>{t('menu.logs')}</Typography>
           </MenuItem>
         </Menu>
 
@@ -193,39 +195,39 @@ const BottomMenu: React.FC = () => {
         >
           <MenuItem onClick={() => { handleSettingsClose(); navigate('/devices'); }}>
             <DevicesIcon sx={{ mr: 1 }} />
-            <Typography>Devices</Typography>
+            <Typography>{t('menu.devices')}</Typography>
           </MenuItem>
           <MenuItem onClick={() => { handleSettingsClose(); navigate('/groups'); }}>
             <GroupsIcon sx={{ mr: 1 }} />
-            <Typography>Groups</Typography>
+            <Typography>{t('menu.groups')}</Typography>
           </MenuItem>
           <MenuItem onClick={() => { handleSettingsClose(); navigate('/persons'); }}>
             <PeopleIcon sx={{ mr: 1 }} />
-            <Typography>Persons</Typography>
+            <Typography>{t('menu.persons')}</Typography>
           </MenuItem>
           <MenuItem onClick={() => { handleSettingsClose(); navigate('/commands'); }}>
             <SettingsIcon sx={{ mr: 1 }} />
-            <Typography>Commands</Typography>
+            <Typography>{t('menu.commands')}</Typography>
           </MenuItem>
           <MenuItem onClick={() => { handleSettingsClose(); navigate('/geofences'); }}>
             <GeofencesIcon sx={{ mr: 1 }} />
-            <Typography>Geofences</Typography>
+            <Typography>{t('menu.geofences')}</Typography>
           </MenuItem>
           <MenuItem onClick={() => { handleSettingsClose(); navigate('/events'); }}>
             <SettingsIcon sx={{ mr: 1 }} />
-            <Typography>Events</Typography>
+            <Typography>{t('menu.events')}</Typography>
           </MenuItem>
           <MenuItem onClick={() => { handleSettingsClose(); navigate('/unknown-devices'); }}>
             <DevicesIcon sx={{ mr: 1 }} />
-            <Typography>Unknown Devices</Typography>
+            <Typography>{t('menu.unknownDevices')}</Typography>
           </MenuItem>
           <MenuItem onClick={() => { handleSettingsClose(); navigate('/users'); }}>
             <SecurityIcon sx={{ mr: 1 }} />
-            <Typography>Users</Typography>
+            <Typography>{t('menu.users')}</Typography>
           </MenuItem>
           <MenuItem onClick={() => { handleSettingsClose(); navigate('/settings'); }}>
             <SettingsIcon sx={{ mr: 1 }} />
-            <Typography>Settings</Typography>
+            <Typography>{t('menu.settings')}</Typography>
           </MenuItem>
         </Menu>
 
@@ -236,10 +238,10 @@ const BottomMenu: React.FC = () => {
           onClose={() => setAnchorEl(null)}
         >
           <MenuItem onClick={handleAccount}>
-            <Typography color="textPrimary">Account Settings</Typography>
+            <Typography color="textPrimary">{t('menu.accountSettings')}</Typography>
           </MenuItem>
           <MenuItem onClick={handleLogout}>
-            <Typography color="error">Logout</Typography>
+            <Typography color="error">{t('menu.logout')}</Typography>
           </MenuItem>
         </Menu>
       </Paper>
@@ -250,7 +252,7 @@ const BottomMenu: React.FC = () => {
     <Paper square elevation={3} sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000 }}>
       <BottomNavigation value={currentSelection()} onChange={handleSelection} showLabels>
         <BottomNavigationAction
-          label="Map"
+          label={t('menu.map')}
           icon={
             <Badge color="error" variant="dot" overlap="circular" invisible={connected}>
               <MapIcon />
@@ -259,17 +261,17 @@ const BottomMenu: React.FC = () => {
           value="map"
         />
         <BottomNavigationAction
-          label="Reports"
+          label={t('menu.reports')}
           icon={<ReportsIcon />}
           value="reports"
         />
         <BottomNavigationAction
-          label="Settings"
+          label={t('menu.settings')}
           icon={<SettingsIcon />}
           value="settings"
         />
         <BottomNavigationAction
-          label="Account"
+          label={t('menu.account')}
           icon={<PersonIcon />}
           value="account"
         />
@@ -283,12 +285,12 @@ const BottomMenu: React.FC = () => {
       >
         <MenuItem onClick={() => { handleReportsClose(); navigate('/replay'); }}>
           <Rotate90DegreesCcwOutlined sx={{ mr: 1 }} />
-            <Typography>Replay</Typography>
+            <Typography>{t('menu.replay')}</Typography>
           </MenuItem>
        
         <MenuItem onClick={() => { handleReportsClose(); navigate('/logs'); }}>
           <LogsIcon sx={{ mr: 1 }} />
-          <Typography>Logs</Typography>
+          <Typography>{t('menu.logs')}</Typography>
         </MenuItem>
       </Menu>
 
@@ -300,39 +302,39 @@ const BottomMenu: React.FC = () => {
       >
         <MenuItem onClick={() => { handleSettingsClose(); navigate('/devices'); }}>
           <DevicesIcon sx={{ mr: 1 }} />
-          <Typography>Devices</Typography>
+          <Typography>{t('menu.devices')}</Typography>
         </MenuItem>
         <MenuItem onClick={() => { handleSettingsClose(); navigate('/groups'); }}>
           <GroupsIcon sx={{ mr: 1 }} />
-          <Typography>Groups</Typography>
+          <Typography>{t('menu.groups')}</Typography>
         </MenuItem>
         <MenuItem onClick={() => { handleSettingsClose(); navigate('/persons'); }}>
           <PeopleIcon sx={{ mr: 1 }} />
-          <Typography>Persons</Typography>
+          <Typography>{t('menu.persons')}</Typography>
         </MenuItem>
         <MenuItem onClick={() => { handleSettingsClose(); navigate('/commands'); }}>
           <SettingsIcon sx={{ mr: 1 }} />
-          <Typography>Commands</Typography>
+          <Typography>{t('menu.commands')}</Typography>
         </MenuItem>
         <MenuItem onClick={() => { handleSettingsClose(); navigate('/geofences'); }}>
           <GeofencesIcon sx={{ mr: 1 }} />
-          <Typography>Geofences</Typography>
+          <Typography>{t('menu.geofences')}</Typography>
         </MenuItem>
         <MenuItem onClick={() => { handleSettingsClose(); navigate('/events'); }}>
           <SettingsIcon sx={{ mr: 1 }} />
-          <Typography>Events</Typography>
+          <Typography>{t('menu.events')}</Typography>
         </MenuItem>
         <MenuItem onClick={() => { handleSettingsClose(); navigate('/unknown-devices'); }}>
           <DevicesIcon sx={{ mr: 1 }} />
-          <Typography>Unknown Devices</Typography>
+          <Typography>{t('menu.unknownDevices')}</Typography>
         </MenuItem>
         <MenuItem onClick={() => { handleSettingsClose(); navigate('/users'); }}>
           <SecurityIcon sx={{ mr: 1 }} />
-          <Typography>Users</Typography>
+          <Typography>{t('menu.users')}</Typography>
         </MenuItem>
         <MenuItem onClick={() => { handleSettingsClose(); navigate('/settings'); }}>
           <SettingsIcon sx={{ mr: 1 }} />
-          <Typography>Settings</Typography>
+          <Typography>{t('menu.settings')}</Typography>
         </MenuItem>
       </Menu>
 
@@ -343,10 +345,10 @@ const BottomMenu: React.FC = () => {
         onClose={() => setAnchorEl(null)}
       >
         <MenuItem onClick={handleAccount}>
-          <Typography color="textPrimary">Account Settings</Typography>
+          <Typography color="textPrimary">{t('menu.accountSettings')}</Typography>
         </MenuItem>
         <MenuItem onClick={handleLogout}>
-          <Typography color="error">Logout</Typography>
+          <Typography color="error">{t('menu.logout')}</Typography>
         </MenuItem>
       </Menu>
     </Paper>
