@@ -162,8 +162,10 @@ class ProtocolServer:
             while True:
                 data = await reader.read(1024)
                 if not data:
+                    self.logger.info(f"TCP client sent no data, closing connection: {client_address}")
                     break
                 
+                self.logger.info(f"TCP received data from {client_address}: {len(data)} bytes - {data[:100]}")
                 await self.process_message(data, client_address)
                 
         except Exception as e:

@@ -42,6 +42,7 @@ import {
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '../contexts/AuthContext';
+import { useApi } from '../hooks/useApi';
 
 interface LogEntry {
   id: string;
@@ -73,6 +74,7 @@ interface Device {
 
 const LogsViewer: React.FC = () => {
   const { isAuthenticated, token } = useAuth();
+  const { apiCall } = useApi();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
   const [protocols, setProtocols] = useState<string[]>([]);
@@ -103,18 +105,13 @@ const LogsViewer: React.FC = () => {
       params.append('hours', hours.toString());
       params.append('limit', limit.toString());
 
-      const response = await fetch(`http://localhost:8000/api/logs/${logType}?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch logs');
+      const result = await apiCall(`http://localhost:8000/api/logs/${logType}?${params}`);
+      
+      if (result.error) {
+        throw new Error(result.error);
       }
 
-      const data: LogsResponse = await response.json();
+      const data: LogsResponse = result.data;
       setLogs(data.entries);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch logs');

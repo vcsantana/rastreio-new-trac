@@ -31,10 +31,18 @@ async def get_protocol_servers_status(
             detail="Admin access required"
         )
     
+    status_info = get_protocol_server_status()
+    total_servers = 0
+    available_protocols = []
+    
+    if protocol_server_manager:
+        total_servers = len(protocol_server_manager.protocol_servers)
+        available_protocols = list(protocol_server_manager.protocol_handlers.keys())
+    
     return {
-        "servers": get_protocol_server_status(),
-        "total_servers": len(protocol_server_manager.protocol_servers),
-        "available_protocols": list(protocol_server_manager.protocol_handlers.keys())
+        "servers": status_info,
+        "total_servers": total_servers,
+        "available_protocols": available_protocols
     }
 
 

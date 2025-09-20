@@ -219,26 +219,29 @@ class TraccarProtocolServerWrapper(ProtocolServer):
             from app.database import AsyncSessionLocal
             from app.models.position import Position
             from app.models.unknown_device import UnknownDevice
+            from app.models.device import Device
             from sqlalchemy import select
+            from datetime import datetime
             
             async with AsyncSessionLocal() as db:
-                # Check if this is an unknown device by looking up the device_id in the message data
-                # The message.device_id is actually the unknown device's database ID
+                # First check if this is a registered device by unique_id
+                # Ensure device_id is treated as string
+                device_id_str = str(message.device_id)
                 result = await db.execute(
-                    select(UnknownDevice).where(UnknownDevice.id == message.device_id)
+                    select(Device).where(Device.unique_id == device_id_str)
                 )
-                unknown_device = result.scalar_one_or_none()
+                registered_device = result.scalar_one_or_none()
                 
-                if unknown_device:
-                    # Create position for unknown device
+                if registered_device:
+                    # Create position for registered device
                     import json
                     attributes = position_data.get('attributes', {})
                     if isinstance(attributes, dict):
                         attributes = json.dumps(attributes)
                     
                     position = Position(
-                        device_id=None,  # No registered device
-                        unknown_device_id=unknown_device.id,  # Use unknown device ID
+                        device_id=registered_device.id,
+                        unknown_device_id=None,
                         protocol=position_data.get('protocol', self.protocol_handler.PROTOCOL_NAME),
                         server_time=position_data.get('server_time'),
                         device_time=position_data.get('device_time'),
@@ -254,18 +257,76 @@ class TraccarProtocolServerWrapper(ProtocolServer):
                         attributes=attributes
                     )
                     
+                    # Update device status to online and last_update
+                    registered_device.status = "online"
+                    registered_device.last_update = datetime.utcnow()
+                    registered_device.position_id = None  # Will be set after position is created
+                    
                     db.add(position)
                     await db.commit()
                     await db.refresh(position)
                     
-                    self.logger.info(f"Position saved for unknown device {message.device_id}: ID {position.id}")
+                    # Update device position_id
+                    registered_device.position_id = position.id
+                    await db.commit()
+                    
+                    self.logger.info(f"Position saved for registered device {message.device_id}: ID {position.id}")
                     
                     # Broadcast position update via WebSocket
                     try:
                         from app.services.websocket_service import websocket_service
-                        await websocket_service.broadcast_position_update(position, None)
+                        await websocket_service.broadcast_position_update(position, registered_device)
                     except Exception as e:
                         self.logger.error(f"Failed to broadcast position update: {e}")
+                        
+                else:
+                    # Check if this is an unknown device by looking up the device_id in the message data
+                    # The message.device_id is actually the unknown device's database ID
+                    result = await db.execute(
+                        select(UnknownDevice).where(UnknownDevice.id == message.device_id)
+                    )
+                    unknown_device = result.scalar_one_or_none()
+                    
+                    if unknown_device:
+                        # Create position for unknown device
+                        import json
+                        attributes = position_data.get('attributes', {})
+                        if isinstance(attributes, dict):
+                            attributes = json.dumps(attributes)
+                        
+                        position = Position(
+                            device_id=None,  # No registered device
+                            unknown_device_id=unknown_device.id,  # Use unknown device ID
+                            protocol=position_data.get('protocol', self.protocol_handler.PROTOCOL_NAME),
+                            server_time=position_data.get('server_time'),
+                            device_time=position_data.get('device_time'),
+                            fix_time=position_data.get('fix_time'),
+                            latitude=position_data.get('latitude'),
+                            longitude=position_data.get('longitude'),
+                            altitude=position_data.get('altitude', 0.0),
+                            speed=position_data.get('speed', 0.0),
+                            course=position_data.get('course', 0.0),
+                            address=position_data.get('address'),
+                            accuracy=position_data.get('accuracy'),
+                            valid=position_data.get('valid', True),
+                            attributes=attributes
+                        )
+                        
+                        # Update unknown device last_seen
+                        unknown_device.last_seen = datetime.utcnow()
+                        
+                        db.add(position)
+                        await db.commit()
+                        await db.refresh(position)
+                        
+                        self.logger.info(f"Position saved for unknown device {message.device_id}: ID {position.id}")
+                        
+                        # Broadcast position update via WebSocket
+                        try:
+                            from app.services.websocket_service import websocket_service
+                            await websocket_service.broadcast_position_update(position, None)
+                        except Exception as e:
+                            self.logger.error(f"Failed to broadcast position update: {e}")
                 
         except Exception as e:
             self.logger.error(f"Error saving position to database: {e}")

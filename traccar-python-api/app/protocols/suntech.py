@@ -87,30 +87,32 @@ class SuntechProtocolHandler(BaseProtocolHandler):
             prefix = parts[index]  # ST300STT
             index += 1
             
-            # Extract device ID from prefix
-            # Support both ST format (ST300STT) and numeric format (47733387)
-            device_id_match = re.search(r'ST\w+STT', prefix)
-            if device_id_match:
-                device_identifier = device_id_match.group()
-            elif prefix.isdigit():
-                device_identifier = prefix
+            # The real device identifier is in parts[1] (907126119), not the prefix
+            if len(parts) > 1:
+                device_identifier = parts[1]  # Use the numeric device ID from the message
+                logger.info("Using device ID from message", device_id=device_identifier, prefix=prefix)
             else:
-                logger.warning("Could not extract device ID from prefix", prefix=prefix)
-                return None
+                # Fallback to prefix parsing if needed
+                device_id_match = re.search(r'ST\w+STT', prefix)
+                if device_id_match:
+                    device_identifier = device_id_match.group()
+                elif prefix.isdigit():
+                    device_identifier = prefix
+                else:
+                    logger.warning("Could not extract device ID from message", prefix=prefix, parts=parts)
+                    return None
             
-            # Extract real device ID from message (index 1)
-            real_device_id = parts[1] if len(parts) > 1 else device_identifier
-            
-            # Add real device ID to client info
-            client_info['real_device_id'] = real_device_id
+            # Add device info to client info
+            client_info['real_device_id'] = device_identifier
+            client_info['device_prefix'] = prefix
             
             # Try to find existing device or create unknown device record
             device = await self._get_or_create_device(device_identifier, client_info)
             if not device:
                 return None
             
-            message_type = parts[index]  # This is actually the device ID in this format
-            index += 1
+            # Skip the device ID part since we already used it
+            # index is already 1 at this point
             
             # In this format, we assume it's a location message
             return await self._parse_location_message(parts, index, device, self.MSG_LOCATION, client_info)
@@ -166,12 +168,11 @@ class SuntechProtocolHandler(BaseProtocolHandler):
     async def _parse_location_message(self, parts: List[str], start_index: int, device: Device, message_type: str, client_info: Dict[str, Any] = None) -> Optional[List[PositionCreate]]:
         """Parse location-type message"""
         try:
-            index = start_index
-            
             # Based on the actual message format:
             # ST300STT;907126119;04;1097B;20250908;12:44:33;33e530;-03.843813;-038.615475;000.013;000.00;11;1;26663840;14.07;000000;1;0019;295746;0.0;0;0;00000000000000;0
+            # Indexes:  0       1        2  3    4        5        6      7          8           9       10     11 12 13      14   15     16 17   18     19  20 21 22             23
             
-            # Device ID (907126119) - index 1
+            # Device ID (907126119) - already processed in start_index-1
             device_id = parts[1]
             
             # Firmware version (04) - index 2
@@ -186,7 +187,7 @@ class SuntechProtocolHandler(BaseProtocolHandler):
             # Time (12:44:33) - index 5
             time_str = parts[5]
             
-            # Parse datetime using Suntech-specific parser
+            # Parse datetime
             datetime_str = f"{date_str}{time_str}"
             try:
                 from datetime import datetime
@@ -214,8 +215,6 @@ class SuntechProtocolHandler(BaseProtocolHandler):
                 logger.warning("Invalid longitude", lon_part=parts[8] if len(parts) > 8 else None)
                 return None
             
-            logger.info("After parsing lat/lon", latitude=latitude, longitude=longitude)
-            
             # Validate coordinates
             if latitude == 0.0 and longitude == 0.0:
                 logger.warning("Invalid coordinate values (0,0)", lat=latitude, lon=longitude)
@@ -235,31 +234,65 @@ class SuntechProtocolHandler(BaseProtocolHandler):
             except (ValueError, IndexError):
                 course = 0.0
             
-            # GPS validity (11) - index 11 - this seems to be a status code, not boolean
+            # GPS validity and satellites (11) - index 11
             try:
-                gps_status = parts[11]
-                # In this format, we'll assume GPS is valid if we have coordinates
-                valid = True
-            except IndexError:
-                valid = True
+                satellites = int(parts[11])
+                valid = satellites > 0  # GPS is valid if we have satellites
+            except (ValueError, IndexError):
+                satellites = 0
+                valid = True  # Assume valid if we have coordinates
             
-            # Additional fields that we can parse if available
-            odometer = None
-            if index < len(parts):
-                try:
-                    # Odometer might be in one of the remaining fields
-                    odometer = int(parts[index])
-                    index += 1
-                except (ValueError, IndexError):
-                    pass
+            # GPS status (1) - index 12
+            try:
+                gps_fix = int(parts[12])
+                if gps_fix == 0:
+                    valid = False  # No GPS fix
+            except (ValueError, IndexError):
+                gps_fix = 1
             
+            # Odometer (26663840) - index 13
+            try:
+                odometer = int(parts[13])
+            except (ValueError, IndexError):
+                odometer = None
+            
+            # Power voltage (14.07) - index 14
+            try:
+                power_voltage = float(parts[14])
+            except (ValueError, IndexError):
+                power_voltage = None
+            
+            # IO Status (000000) - index 15
+            # This contains ignition and other digital inputs/outputs
+            io_status = None
+            ignition = None
+            try:
+                io_status = parts[15]
+                if len(io_status) >= 1:
+                    # First bit is typically ignition
+                    ignition = io_status[0] == '1'
+            except (ValueError, IndexError):
+                pass
+            
+            # Mode (1) - index 16
+            try:
+                mode = int(parts[16])
+            except (ValueError, IndexError):
+                mode = None
+            
+            # Message number (0019) - index 17
+            try:
+                message_number = int(parts[17])
+            except (ValueError, IndexError):
+                message_number = None
             
             # Create position object
             position_data = {
-                'device_id': device.id,
+                'device_id': device.unique_id if hasattr(device, 'unique_id') else device.id,
                 'protocol': self.PROTOCOL_NAME,
                 'server_time': datetime.utcnow(),
                 'device_time': device_time,
+                'fix_time': device_time,  # Use device time as fix time
                 'latitude': latitude,
                 'longitude': longitude,
                 'altitude': 0.0,  # Not provided in basic format
@@ -270,19 +303,46 @@ class SuntechProtocolHandler(BaseProtocolHandler):
                     'version_fw': firmware_version,
                     'protocol_type': protocol_type,
                     'cell_info': cell_info,
-                    'gps_status': gps_status,
-                    'real_device_id': client_info.get('real_device_id', device.unique_id) if client_info else device.unique_id
+                    'satellites': satellites,
+                    'gps_fix': gps_fix,
+                    'real_device_id': client_info.get('real_device_id', device.unique_id) if client_info else device.unique_id,
+                    'device_prefix': client_info.get('device_prefix', 'ST300STT') if client_info else 'ST300STT'
                 }
             }
             
+            # Add optional attributes
             if odometer is not None:
                 position_data['attributes']['odometer'] = odometer
+                
+            if power_voltage is not None:
+                position_data['attributes']['power'] = power_voltage
+                position_data['attributes']['battery'] = power_voltage  # Same as power for now
+                
+            if io_status is not None:
+                position_data['attributes']['io'] = io_status
+                
+            if ignition is not None:
+                position_data['attributes']['ignition'] = ignition
+                
+            if mode is not None:
+                position_data['attributes']['mode'] = mode
+                
+            if message_number is not None:
+                position_data['attributes']['message_number'] = message_number
             
             # Add alarm information
             if message_type == self.MSG_EMERGENCY:
                 position_data['attributes']['alarm'] = 'general'
             elif message_type == self.MSG_ALERT:
                 position_data['attributes']['alarm'] = 'general'
+            
+            logger.info("Position data created", 
+                       device_id=device.id, 
+                       lat=latitude, 
+                       lon=longitude, 
+                       ignition=ignition,
+                       valid=valid,
+                       satellites=satellites)
             
             return [PositionCreate(**position_data)]
             
@@ -378,7 +438,7 @@ class SuntechProtocolHandler(BaseProtocolHandler):
             "alarm_disarm"
         ]
     
-    async def parse_message(self, data: bytes, client_address: Tuple[str, int]) -> Optional['ProtocolMessage']:
+    async def parse_message(self, data: bytes, client_address: Tuple[str, int]) -> Optional[Any]:
         """
         Parse incoming Suntech message data.
         
@@ -390,11 +450,30 @@ class SuntechProtocolHandler(BaseProtocolHandler):
             Parsed ProtocolMessage or None if invalid
         """
         try:
+            logger.info("Suntech protocol received data", 
+                       client_address=client_address, 
+                       data_length=len(data),
+                       raw_data=data[:100],  # First 100 bytes for debugging
+                       raw_hex=data[:100].hex())  # Hex representation for debugging
+            
             message_str = data.decode('utf-8', errors='ignore').strip()
+            
+            # Log original message before cleaning
+            logger.info("Suntech protocol original message", 
+                       client_address=client_address,
+                       original_message=repr(message_str))
+            
             # Remove control characters like \r, \n, \t
             message_str = ''.join(char for char in message_str if ord(char) >= 32 or char in '\n\r\t')
             message_str = message_str.strip()
+            
+            logger.info("Suntech protocol cleaned message", 
+                       client_address=client_address,
+                       cleaned_message=message_str,
+                       message_length=len(message_str))
+            
             if not message_str:
+                logger.warning("Suntech protocol: empty message after decoding")
                 return None
             
             # Convert client_address to client_info format
@@ -430,7 +509,7 @@ class SuntechProtocolHandler(BaseProtocolHandler):
             logger.error("Error parsing Suntech message", error=str(e), data=data)
             return None
     
-    async def create_position(self, message: 'ProtocolMessage') -> Optional[Dict[str, Any]]:
+    async def create_position(self, message: Any) -> Optional[Dict[str, Any]]:
         """
         Create position data from parsed Suntech message.
         
@@ -488,7 +567,7 @@ class SuntechProtocolHandler(BaseProtocolHandler):
             logger.error("Error creating position from Suntech message", error=str(e))
             return None
     
-    async def create_events(self, message: 'ProtocolMessage') -> List[Dict[str, Any]]:
+    async def create_events(self, message: Any) -> List[Dict[str, Any]]:
         """
         Create events from parsed Suntech message.
         

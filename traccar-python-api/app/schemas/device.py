@@ -41,6 +41,7 @@ class DeviceCreate(DeviceBase):
 
 class DeviceUpdate(BaseModel):
     name: Optional[str] = None
+    unique_id: Optional[str] = None
     phone: Optional[str] = None
     model: Optional[str] = None
     contact: Optional[str] = None

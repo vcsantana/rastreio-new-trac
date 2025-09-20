@@ -17,6 +17,7 @@ import EventsDrawer from '../components/main/EventsDrawer';
 import BottomMenu from '../components/common/BottomMenu';
 import { useGeofences } from '../hooks/useGeofences';
 import { useFilter } from '../hooks/useFilter';
+import { useApi } from '../hooks/useApi';
 import { Geofence } from '../types/geofences';
 
 // Define interfaces locally for now
@@ -62,6 +63,9 @@ const Dashboard: React.FC = () => {
   
   // Geofences hook
   const { fetchGeofences } = useGeofences();
+  
+  // API hook for authenticated requests
+  const { apiCall } = useApi();
 
   // Filter hook - only pass devices after they are loaded
   useFilter({
@@ -123,36 +127,24 @@ const Dashboard: React.FC = () => {
   const fetchData = async (authToken: string) => {
     try {
       console.log('🔍 Starting fetchData with token:', authToken ? 'Token exists' : 'No token');
-      
-      const headers = {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'application/json',
-      };
 
       console.log('📡 Fetching devices...');
-      // Fetch devices
-      const devicesResponse = await fetch('http://localhost:8000/api/devices', { headers });
-      console.log('📡 Devices response status:', devicesResponse.status);
-      if (!devicesResponse.ok) {
-        throw new Error(`Failed to fetch devices: ${devicesResponse.statusText}`);
+      // Fetch devices using the API hook
+      const devicesResult = await apiCall('http://localhost:8000/api/devices/');
+      if (devicesResult.error) {
+        throw new Error(`Failed to fetch devices: ${devicesResult.error}`);
       }
-      const devicesData = await devicesResponse.json();
+      const devicesData = devicesResult.data || [];
       console.log('📱 Devices data:', devicesData.length, 'devices');
 
-      // Dashboard should only show registered devices
-      // Unknown devices are handled separately in /unknown-devices page
-      console.log('📱 Using only registered devices for dashboard');
-
       console.log('📍 Fetching positions...');
-      // Fetch positions
-      const positionsResponse = await fetch('http://localhost:8000/api/positions/latest', { headers });
-      console.log('📍 Positions response status:', positionsResponse.status);
-      if (!positionsResponse.ok) {
-        throw new Error(`Failed to fetch positions: ${positionsResponse.statusText}`);
+      // Fetch positions using the API hook
+      const positionsResult = await apiCall('http://localhost:8000/api/positions/latest');
+      if (positionsResult.error) {
+        throw new Error(`Failed to fetch positions: ${positionsResult.error}`);
       }
-      const positionsData = await positionsResponse.json();
+      const positionsData = positionsResult.data || [];
       console.log('📍 Positions data:', positionsData.length, 'positions');
-      console.log('📍 All positions:', positionsData);
 
       // Transform positions to match the expected format
       const transformedPositions = positionsData.map((position: any) => ({

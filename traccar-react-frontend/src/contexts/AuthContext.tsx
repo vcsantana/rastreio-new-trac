@@ -14,6 +14,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  checkAuthStatus: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -77,6 +78,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('user');
   };
 
+  const checkAuthStatus = async (): Promise<boolean> => {
+    if (!token) {
+      return false;
+    }
+
+    try {
+      const response = await fetch(API_ENDPOINTS.ME, {
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        // Token is invalid or expired
+        logout();
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      // Network error or other issues
+      logout();
+      return false;
+    }
+  };
+
   const isAuthenticated = !!token;
 
   const value: AuthContextType = {
@@ -85,6 +110,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     logout,
     isAuthenticated,
+    checkAuthStatus,
   };
 
   return (
