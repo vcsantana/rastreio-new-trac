@@ -277,3 +277,8 @@ O novo frontend React apresenta uma arquitetura moderna e funcionalidades avanç
 3. Completar sistema de relatórios
 4. Implementar sistema de calendários
 5. Adicionar suporte a internacionalização
+
+
+
+
+

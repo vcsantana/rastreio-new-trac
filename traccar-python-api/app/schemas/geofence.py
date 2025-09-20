@@ -3,7 +3,7 @@ Geofence schemas for API serialization
 """
 from datetime import datetime
 from typing import Optional, Dict, Any, List
-from pydantic import BaseModel, Field, ConfigDict, validator
+from pydantic import BaseModel, Field, ConfigDict, validator, model_validator
 import json
 
 
@@ -91,9 +91,9 @@ class GeofenceResponse(GeofenceBase):
     geometry_type: Optional[str] = Field(None, description="Geometry type from GeoJSON")
     coordinates: Optional[List] = Field(None, description="Extracted coordinates")
 
-    def __init__(self, **data):
-        super().__init__(**data)
-        # Parse geometry for easier access
+    @model_validator(mode='after')
+    def parse_geometry(self):
+        """Parse geometry for easier access"""
         if self.geometry:
             try:
                 geom_data = json.loads(self.geometry)
@@ -102,6 +102,7 @@ class GeofenceResponse(GeofenceBase):
                 self.coordinates = geom_data.get('coordinates')
             except json.JSONDecodeError:
                 pass
+        return self
 
 
 class GeofenceListResponse(BaseModel):

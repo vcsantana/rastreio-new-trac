@@ -246,47 +246,69 @@ const MapGeofenceEdit: React.FC<MapGeofenceEditProps> = ({
   // Utility functions
   const geofenceToFeature = (geofence: any) => {
     let geometry;
-    const area = typeof geofence.area === 'string' ? geofence.area : '';
-
-    if (area.startsWith('CIRCLE')) {
-      const [_, lon, lat, radius] = area.match(/CIRCLE \((\d+\.?\d*) (\d+\.?\d*) (\d+\.?\d*)\)/);
-      // Create a simple polygon approximation for circle
-      const points = 32;
-      const coordinates = [];
-      for (let i = 0; i <= points; i++) {
-        const angle = (i * 360) / points;
-        const radian = (angle * Math.PI) / 180;
-        coordinates.push([
-          parseFloat(lon) + (parseFloat(radius) / 111320) * Math.cos(radian),
-          parseFloat(lat) + (parseFloat(radius) / 111320) * Math.sin(radian)
-        ]);
+    
+    // Parse the geometry field (GeoJSON string) instead of area field
+    try {
+      const geometryData = typeof geofence.geometry === 'string' 
+        ? JSON.parse(geofence.geometry) 
+        : geofence.geometry;
+      
+      if (geometryData && geometryData.type && geometryData.coordinates) {
+        geometry = geometryData;
+      } else {
+        // Fallback: try to parse from geometry string if it's in WKT format
+        const geometryStr = geofence.geometry || '';
+        
+        if (geometryStr.startsWith('CIRCLE')) {
+          const [_, lon, lat, radius] = geometryStr.match(/CIRCLE \((\d+\.?\d*) (\d+\.?\d*) (\d+\.?\d*)\)/) || [];
+          if (lon && lat && radius) {
+            // Create a simple polygon approximation for circle
+            const points = 32;
+            const coordinates = [];
+            for (let i = 0; i <= points; i++) {
+              const angle = (i * 360) / points;
+              const radian = (angle * Math.PI) / 180;
+              coordinates.push([
+                parseFloat(lon) + (parseFloat(radius) / 111320) * Math.cos(radian),
+                parseFloat(lat) + (parseFloat(radius) / 111320) * Math.sin(radian)
+              ]);
+            }
+            geometry = {
+              type: 'Polygon',
+              coordinates: [coordinates]
+            };
+          }
+        } else if (geometryStr.startsWith('POLYGON')) {
+          const matches = geometryStr.match(/POLYGON \(\((.*?)\)\)/);
+          if (matches) {
+            const coordinates = matches[1].split(', ').map((coord: string) =>
+              coord.split(' ').map(parseFloat)
+            );
+            geometry = {
+              type: 'Polygon',
+              coordinates: [coordinates]
+            };
+          }
+        } else if (geometryStr.startsWith('LINESTRING')) {
+          const matches = geometryStr.match(/LINESTRING \((.*?)\)/);
+          if (matches) {
+            const coordinates = matches[1].split(', ').map((coord: string) =>
+              coord.split(' ').map(parseFloat)
+            );
+            geometry = {
+              type: 'LineString',
+              coordinates
+            };
+          }
+        }
       }
+    } catch (error) {
+      console.error('Error parsing geofence geometry:', error);
+      // Return a default geometry if parsing fails
       geometry = {
         type: 'Polygon',
-        coordinates: [coordinates]
+        coordinates: [[[-46.6333, -23.5505], [-46.6300, -23.5505], [-46.6300, -23.5480], [-46.6333, -23.5480], [-46.6333, -23.5505]]]
       };
-    } else if (area.startsWith('POLYGON')) {
-      const matches = area.match(/POLYGON \(\((.*?)\)\)/);
-      if (matches) {
-        const coordinates = matches[1].split(', ').map((coord: string) =>
-          coord.split(' ').map(parseFloat)
-        );
-        geometry = {
-          type: 'Polygon',
-          coordinates: [coordinates]
-        };
-      }
-    } else if (geofence.area?.startsWith('LINESTRING')) {
-      const matches = geofence.area.match(/LINESTRING \((.*?)\)/);
-      if (matches) {
-        const coordinates = matches[1].split(', ').map((coord: string) =>
-          coord.split(' ').map(parseFloat)
-        );
-        geometry = {
-          type: 'LineString',
-          coordinates
-        };
-      }
     }
 
     return {
