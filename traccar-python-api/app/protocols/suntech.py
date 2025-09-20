@@ -342,7 +342,10 @@ class SuntechProtocolHandler(BaseProtocolHandler):
                        lon=longitude, 
                        ignition=ignition,
                        valid=valid,
-                       satellites=satellites)
+                       satellites=satellites,
+                       power=power_voltage,
+                       odometer=odometer,
+                       attributes=position_data['attributes'])
             
             return [PositionCreate(**position_data)]
             
@@ -514,52 +517,37 @@ class SuntechProtocolHandler(BaseProtocolHandler):
         Create position data from parsed Suntech message.
         
         Args:
-            message: Parsed protocol message
+            message: Parsed protocol message containing position data
             
         Returns:
             Position data dictionary or None
         """
         try:
+            if not hasattr(message, 'data') or not message.data:
+                logger.warning("Message has no data attribute")
+                return None
+                
             data = message.data
             
-            # Extract position data
-            latitude = data.get('latitude')
-            longitude = data.get('longitude')
-            
-            if latitude is None or longitude is None:
-                return None
-            
-            if not is_valid_coordinates(latitude, longitude):
-                return None
-            
+            # Extract position data from the parsed message
             position_data = {
                 'device_id': message.device_id,
                 'protocol': self.PROTOCOL_NAME,
                 'server_time': datetime.utcnow(),
-                'device_time': data.get('device_time', message.timestamp),
-                'fix_time': data.get('fix_time', message.timestamp),
-                'latitude': latitude,
-                'longitude': longitude,
-                'altitude': data.get('altitude', 0),
-                'speed': data.get('speed', 0),
-                'course': data.get('course', 0),
+                'device_time': data.get('device_time'),
+                'fix_time': data.get('fix_time'),
+                'latitude': data.get('latitude'),
+                'longitude': data.get('longitude'),
+                'altitude': data.get('altitude', 0.0),
+                'speed': data.get('speed', 0.0),
+                'course': data.get('course', 0.0),
                 'valid': data.get('valid', True),
-                'attributes': {
-                    'satellites': data.get('satellites'),
-                    'hdop': data.get('hdop'),
-                    'odometer': data.get('odometer'),
-                    'fuel': data.get('fuel'),
-                    'battery': data.get('battery'),
-                    'power': data.get('power'),
-                    'ignition': data.get('ignition'),
-                    'motion': data.get('motion'),
-                    'version_fw': data.get('version_fw'),
-                    'protocol_type': data.get('protocol_type'),
-                    'cell_info': data.get('cell_info'),
-                    'gps_status': data.get('gps_status'),
-                    'real_device_id': data.get('real_device_id')
-                }
+                'attributes': data.get('attributes', {})
             }
+            
+            logger.info("Position data created from message", 
+                       device_id=message.device_id,
+                       attributes=position_data['attributes'])
             
             return position_data
             
