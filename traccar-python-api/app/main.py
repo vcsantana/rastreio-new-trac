@@ -11,9 +11,9 @@ import uvicorn
 
 from app.config import settings
 from app.database import init_db
-from app.api import auth, devices, positions, websocket, events, geofences, server, protocols, reports, groups, persons, logs, unknown_devices, users, cache, tasks, commands, command_templates, device_images, device_detection, device_expiration, device_scheduling, report_extensions, client_monitoring
+from app.api import auth, devices, positions, websocket, events, geofences, server, protocols, reports, groups, persons, logs, unknown_devices, users, cache, tasks, commands, command_templates, device_images, device_detection, device_expiration, device_scheduling, report_extensions, client_monitoring, pois_simple
 # Import models to ensure they are registered with SQLAlchemy
-from app.models import user, device, position, event, geofence, report, group, person, unknown_device, command, command_template, device_image
+from app.models import user, device, position, event, geofence, report, group, person, unknown_device, command, command_template, device_image, poi
 from app.models import server as server_model
 # Import protocol server manager
 from app.protocols import start_protocol_servers, stop_protocol_servers
@@ -220,6 +220,7 @@ app.include_router(device_detection.router, prefix="/api/devices", tags=["Device
 app.include_router(device_expiration.router, prefix="/api/devices", tags=["Device Expiration"])
 app.include_router(device_scheduling.router, prefix="/api/devices", tags=["Device Scheduling"])
 app.include_router(client_monitoring.router, prefix="/api/client-monitoring", tags=["Client Monitoring"])
+app.include_router(pois_simple.router, prefix="/api/pois", tags=["Points of Interest"])
 
 # Startup and shutdown events
 @app.on_event("startup")

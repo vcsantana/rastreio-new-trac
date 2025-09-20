@@ -159,3 +159,11 @@ class Device(Base):
             5: 'Mínimo'
         }
         return priority_map.get(self.priority_level, 'Normal')
+    
+    # Relationships
+    group = relationship("Group", back_populates="devices")
+    person = relationship("Person", back_populates="devices") 
+    positions = relationship("Position", back_populates="device", cascade="all, delete-orphan", foreign_keys="Position.device_id")
+    events = relationship("Event", back_populates="device", cascade="all, delete-orphan")
+    commands = relationship("Command", back_populates="device", cascade="all, delete-orphan")
+    pois = relationship("POI", back_populates="device", cascade="all, delete-orphan")

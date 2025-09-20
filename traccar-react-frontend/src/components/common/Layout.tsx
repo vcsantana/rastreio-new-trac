@@ -38,6 +38,7 @@ import {
   People as UsersIcon,
   Assessment as ClientMonitoringIcon,
   Menu as MenuIcon,
+  LocationOn as POIIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -123,6 +124,12 @@ export const Layout: React.FC = () => {
       icon: <GeofencesIcon />,
     },
     {
+      id: 'pois',
+      label: 'POIs',
+      path: '/pois',
+      icon: <POIIcon />,
+    },
+    {
       id: 'logs',
       label: t('navigation.logs'),
       path: '/logs',
@@ -183,6 +190,7 @@ export const Layout: React.FC = () => {
                         location.pathname.startsWith('/persons') ||
                         location.pathname.startsWith('/commands') ||
                         location.pathname.startsWith('/geofences') ||
+                        location.pathname.startsWith('/pois') ||
                         location.pathname.startsWith('/logs') ||
                         location.pathname.startsWith('/unknown-devices') ||
                         location.pathname.startsWith('/users');

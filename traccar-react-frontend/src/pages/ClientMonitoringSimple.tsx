@@ -41,7 +41,8 @@ import {
   SignalCellularOff,
   PriorityHigh,
   Edit,
-  GroupWork
+  GroupWork,
+  LocationOn
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { useDevices } from '../hooks/useDevices';
@@ -298,6 +299,7 @@ const ClientMonitoringDashboard: React.FC = () => {
   const [deviceDialogOpen, setDeviceDialogOpen] = useState(false);
   const [bulkEditDialogOpen, setBulkEditDialogOpen] = useState(false);
   const [selectedDevices, setSelectedDevices] = useState<number[]>([]);
+  const [pois, setPois] = useState<any[]>([]);
 
   // Fetch data
   const fetchMonitoringData = useCallback(async () => {
@@ -345,6 +347,20 @@ const ClientMonitoringDashboard: React.FC = () => {
         });
       }
 
+      // Fetch POIs
+      try {
+        const poisResponse = await fetch('/api/pois/', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (poisResponse.ok) {
+          const poisData = await poisResponse.json();
+          setPois(Array.isArray(poisData) ? poisData : []);
+          console.log('POIs loaded:', poisData.length);
+        }
+      } catch (error) {
+        console.error('Error fetching POIs:', error);
+      }
+      
       // Fetch devices
       console.log('Fetching devices...');
       const params = new URLSearchParams();

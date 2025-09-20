@@ -30,6 +30,7 @@ class Group(Base):
     # Relationships
     devices = relationship("Device", back_populates="group")
     person = relationship("Person", back_populates="groups")
+    pois = relationship("POI", back_populates="group", cascade="all, delete-orphan")
     user_permissions = relationship(
         "User", 
         secondary="user_group_permissions", 
