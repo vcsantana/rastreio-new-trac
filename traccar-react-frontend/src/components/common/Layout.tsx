@@ -17,6 +17,8 @@ import {
   MenuItem,
   Divider,
   Badge,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -35,6 +37,7 @@ import {
   NetworkCheck as UnknownDevicesIcon,
   People as UsersIcon,
   Assessment as ClientMonitoringIcon,
+  Menu as MenuIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -64,27 +67,33 @@ export const Layout: React.FC = () => {
   const dispatch = useDispatch();
   const { user, logout } = useAuth();
   const { t } = useTranslation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  // Main navigation items (like original Traccar)
+  // State for mobile drawer
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+
+  // Main navigation items (accessed via BottomMenu)
   const mainNavigationItems: NavigationItem[] = [
-    {
-      id: 'dashboard',
-      label: t('navigation.dashboard'),
-      path: '/dashboard',
-      icon: <DashboardIcon />,
-    },
-    {
-      id: 'client-monitoring',
-      label: 'Central de Monitoramento',
-      path: '/client-monitoring',
-      icon: <ClientMonitoringIcon />,
-    },
-    {
-      id: 'reports',
-      label: t('navigation.reports'),
-      path: '/reports',
-      icon: <ReportsIcon />,
-    },
+    // These are handled by BottomMenu, not sidebar
+    // {
+    //   id: 'dashboard',
+    //   label: t('navigation.dashboard'),
+    //   path: '/dashboard',
+    //   icon: <DashboardIcon />,
+    // },
+    // {
+    //   id: 'client-monitoring',
+    //   label: 'Central de Monitoramento',
+    //   path: '/client-monitoring',
+    //   icon: <ClientMonitoringIcon />,
+    // },
+    // {
+    //   id: 'reports',
+    //   label: t('navigation.reports'),
+    //   path: '/reports',
+    //   icon: <ReportsIcon />,
+    // },
   ];
 
   // Settings navigation items (admin only)
@@ -168,17 +177,15 @@ export const Layout: React.FC = () => {
     dispatch(toggleTheme());
   };
 
-  // Check if we're on a settings page (should show sidebar)
+  // Check if we're on a settings/admin page (should show sidebar)
   const isSettingsPage = location.pathname.startsWith('/settings') || 
-                        location.pathname.startsWith('/reports') ||
                         location.pathname.startsWith('/groups') ||
                         location.pathname.startsWith('/persons') ||
                         location.pathname.startsWith('/commands') ||
                         location.pathname.startsWith('/geofences') ||
                         location.pathname.startsWith('/logs') ||
                         location.pathname.startsWith('/unknown-devices') ||
-                        location.pathname.startsWith('/users') ||
-                        location.pathname.startsWith('/client-monitoring');
+                        location.pathname.startsWith('/users');
 
   // Filter navigation items based on user permissions
   const navigationItems = allNavigationItems.filter(item => {
@@ -194,6 +201,19 @@ export const Layout: React.FC = () => {
       {isSettingsPage && (
         <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
           <Toolbar>
+            {/* Mobile Menu Button */}
+            {isMobile && (
+              <IconButton
+                color="inherit"
+                aria-label="open drawer"
+                edge="start"
+                onClick={() => setMobileDrawerOpen(true)}
+                sx={{ mr: 2 }}
+              >
+                <MenuIcon />
+              </IconButton>
+            )}
+            
             <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
               {location.pathname.split('/')[1]?.charAt(0).toUpperCase() + location.pathname.split('/')[1]?.slice(1) || 'Settings'}
             </Typography>
@@ -231,34 +251,77 @@ export const Layout: React.FC = () => {
 
       {/* Sidebar - Only show on settings pages */}
       {isSettingsPage && (
-        <Drawer
-          variant="permanent"
-          sx={{
-            width: DRAWER_WIDTH,
-            flexShrink: 0,
-            '& .MuiDrawer-paper': {
-              width: DRAWER_WIDTH,
-              boxSizing: 'border-box',
-              top: isSettingsPage ? 64 : 0, // Account for AppBar height
-            },
-          }}
-        >
-          <Box sx={{ overflow: 'auto', pt: isSettingsPage ? 1 : 0 }}>
-            <List>
-              {navigationItems.map((item) => (
-                <ListItem key={item.id} disablePadding>
-                  <ListItemButton
-                    selected={location.pathname === item.path}
-                    onClick={() => navigate(item.path)}
-                  >
-                    <ListItemIcon>{item.icon}</ListItemIcon>
-                    <ListItemText primary={item.label} />
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </List>
-          </Box>
-        </Drawer>
+        <>
+          {/* Desktop Sidebar */}
+          {!isMobile && (
+            <Drawer
+              variant="permanent"
+              sx={{
+                width: DRAWER_WIDTH,
+                flexShrink: 0,
+                '& .MuiDrawer-paper': {
+                  width: DRAWER_WIDTH,
+                  boxSizing: 'border-box',
+                  top: 64, // Account for AppBar height
+                },
+              }}
+            >
+              <Box sx={{ overflow: 'auto', pt: 1 }}>
+                <List>
+                  {navigationItems.map((item) => (
+                    <ListItem key={item.id} disablePadding>
+                      <ListItemButton
+                        selected={location.pathname === item.path}
+                        onClick={() => navigate(item.path)}
+                      >
+                        <ListItemIcon>{item.icon}</ListItemIcon>
+                        <ListItemText primary={item.label} />
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+            </Drawer>
+          )}
+
+          {/* Mobile Drawer */}
+          {isMobile && (
+            <Drawer
+              variant="temporary"
+              open={mobileDrawerOpen}
+              onClose={() => setMobileDrawerOpen(false)}
+              ModalProps={{
+                keepMounted: true, // Better open performance on mobile
+              }}
+              sx={{
+                '& .MuiDrawer-paper': {
+                  width: DRAWER_WIDTH,
+                  boxSizing: 'border-box',
+                },
+              }}
+            >
+              <Toolbar /> {/* Spacer for AppBar */}
+              <Box sx={{ overflow: 'auto' }}>
+                <List>
+                  {navigationItems.map((item) => (
+                    <ListItem key={item.id} disablePadding>
+                      <ListItemButton
+                        selected={location.pathname === item.path}
+                        onClick={() => {
+                          navigate(item.path);
+                          setMobileDrawerOpen(false); // Close drawer after navigation
+                        }}
+                      >
+                        <ListItemIcon>{item.icon}</ListItemIcon>
+                        <ListItemText primary={item.label} />
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+            </Drawer>
+          )}
+        </>
       )}
 
       {/* Main Content */}
@@ -266,7 +329,7 @@ export const Layout: React.FC = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          width: isSettingsPage ? `calc(100% - ${DRAWER_WIDTH}px)` : '100%',
+          width: isSettingsPage && !isMobile ? `calc(100% - ${DRAWER_WIDTH}px)` : '100%',
           height: '100vh',
           overflow: 'hidden',
           display: 'flex',
