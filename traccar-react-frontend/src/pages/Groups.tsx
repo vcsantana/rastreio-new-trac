@@ -35,6 +35,7 @@ import {
   Clear as ClearIcon,
 } from '@mui/icons-material';
 import { useGroups, Group } from '../hooks/useGroups';
+import { useTranslation } from '../hooks/useTranslation';
 import GroupDialog from '../components/common/GroupDialog';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 
@@ -49,6 +50,8 @@ const Groups: React.FC = () => {
     deleteGroup,
     toggleGroupStatus,
   } = useGroups();
+
+  const { t } = useTranslation();
 
   // Load groups on component mount
   useEffect(() => {
@@ -209,11 +212,11 @@ const Groups: React.FC = () => {
     
     switch (confirmAction) {
       case 'delete':
-        return `Are you sure you want to delete the group "${selectedGroup.name}"? This action cannot be undone.`;
+        return `${t('groups.deleteGroupMessage')} "${selectedGroup.name}"?`;
       case 'disable':
-        return `Are you sure you want to disable the group "${selectedGroup.name}"?`;
+        return `${t('groups.disableGroupMessage')} "${selectedGroup.name}"?`;
       case 'enable':
-        return `Are you sure you want to enable the group "${selectedGroup.name}"?`;
+        return `${t('groups.enableGroupMessage')} "${selectedGroup.name}"?`;
       default:
         return '';
     }
@@ -222,13 +225,13 @@ const Groups: React.FC = () => {
   const getConfirmTitle = () => {
     switch (confirmAction) {
       case 'delete':
-        return 'Delete Group';
+        return t('groups.deleteGroupTitle');
       case 'disable':
-        return 'Disable Group';
+        return t('groups.disableGroupTitle');
       case 'enable':
-        return 'Enable Group';
+        return t('groups.enableGroupTitle');
       default:
-        return 'Confirm Action';
+        return t('groups.confirmAction');
     }
   };
 
@@ -244,7 +247,7 @@ const Groups: React.FC = () => {
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" component="h1">
-          Groups ({filteredGroups.length})
+          {t('groups.title')} ({filteredGroups.length})
         </Typography>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
           <Button
@@ -253,10 +256,10 @@ const Groups: React.FC = () => {
             onClick={() => setFiltersExpanded(!filtersExpanded)}
             color={hasActiveFilters ? 'primary' : 'inherit'}
           >
-            Filters {hasActiveFilters && `(${[
-              searchTerm && 'Search',
-              statusFilter !== 'all' && 'Status',
-              personFilter !== 'all' && 'Person'
+            {t('groups.filters')} {hasActiveFilters && `(${[
+              searchTerm && t('groups.searchGroups'),
+              statusFilter !== 'all' && t('groups.status'),
+              personFilter !== 'all' && t('groups.person')
             ].filter(Boolean).length})`}
           </Button>
           {hasActiveFilters && (
@@ -266,7 +269,7 @@ const Groups: React.FC = () => {
               onClick={clearFilters}
               size="small"
             >
-              Clear
+              {t('groups.clear')}
             </Button>
           )}
           <Button
@@ -274,7 +277,7 @@ const Groups: React.FC = () => {
             startIcon={<AddIcon />}
             onClick={handleAddGroup}
           >
-            Add Group
+            {t('groups.addGroup')}
           </Button>
         </Box>
       </Box>
@@ -283,15 +286,15 @@ const Groups: React.FC = () => {
       <Collapse in={filtersExpanded}>
         <Paper sx={{ p: 3, mb: 3 }}>
           <Typography variant="h6" gutterBottom>
-            Filter Groups
+            {t('groups.filterGroups')}
           </Typography>
           <Grid container spacing={2}>
             {/* Search */}
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Search groups"
-                placeholder="Search by name, description, or person..."
+                label={t('groups.searchGroups')}
+                placeholder={t('groups.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 InputProps={{
@@ -308,15 +311,15 @@ const Groups: React.FC = () => {
             {/* Status Filter */}
             <Grid item xs={12} md={3}>
               <FormControl fullWidth size="small">
-                <InputLabel>Status</InputLabel>
+                <InputLabel>{t('groups.status')}</InputLabel>
                 <Select
                   value={statusFilter}
-                  label="Status"
+                  label={t('groups.status')}
                   onChange={(e) => setStatusFilter(e.target.value)}
                 >
-                  <MenuItem value="all">All Status</MenuItem>
-                  <MenuItem value="enabled">Enabled</MenuItem>
-                  <MenuItem value="disabled">Disabled</MenuItem>
+                  <MenuItem value="all">{t('groups.allStatus')}</MenuItem>
+                  <MenuItem value="enabled">{t('groups.enabled')}</MenuItem>
+                  <MenuItem value="disabled">{t('groups.disabled')}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -324,13 +327,13 @@ const Groups: React.FC = () => {
             {/* Person Filter */}
             <Grid item xs={12} md={3}>
               <FormControl fullWidth size="small">
-                <InputLabel>Person</InputLabel>
+                <InputLabel>{t('groups.person')}</InputLabel>
                 <Select
                   value={personFilter}
-                  label="Person"
+                  label={t('groups.person')}
                   onChange={(e) => setPersonFilter(e.target.value)}
                 >
-                  <MenuItem value="all">All Persons</MenuItem>
+                  <MenuItem value="all">{t('groups.allPersons')}</MenuItem>
                   {uniquePersons.map(person => (
                     <MenuItem key={person} value={person}>
                       {person}
@@ -353,17 +356,17 @@ const Groups: React.FC = () => {
         <TableContainer>
           <Table>
             <TableHead>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Description</TableCell>
-                <TableCell>Parent</TableCell>
-                <TableCell>Person</TableCell>
-                <TableCell>Devices</TableCell>
-                <TableCell>Children</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Created</TableCell>
-                <TableCell align="center">Actions</TableCell>
-              </TableRow>
+            <TableRow>
+              <TableCell>{t('groups.name')}</TableCell>
+              <TableCell>{t('groups.description')}</TableCell>
+              <TableCell>{t('groups.parent')}</TableCell>
+              <TableCell>{t('groups.person')}</TableCell>
+              <TableCell>{t('groups.devices')}</TableCell>
+              <TableCell>{t('groups.children')}</TableCell>
+              <TableCell>{t('groups.status')}</TableCell>
+              <TableCell>{t('groups.created')}</TableCell>
+              <TableCell align="center">{t('groups.actions')}</TableCell>
+            </TableRow>
             </TableHead>
             <TableBody>
               {filteredGroups.map((group) => (
@@ -396,7 +399,7 @@ const Groups: React.FC = () => {
                       />
                     ) : (
                       <Typography variant="body2" color="text.secondary">
-                        Root Group
+                        {t('groups.rootGroup')}
                       </Typography>
                     )}
                   </TableCell>
@@ -410,7 +413,7 @@ const Groups: React.FC = () => {
                       />
                     ) : (
                       <Typography variant="body2" color="text.secondary">
-                        No Person
+                        {t('groups.noPerson')}
                       </Typography>
                     )}
                   </TableCell>
@@ -434,7 +437,7 @@ const Groups: React.FC = () => {
                     <Box display="flex" alignItems="center" gap={1}>
                       {getStatusIcon(group.disabled)}
                       <Chip
-                        label={group.disabled ? 'Disabled' : 'Enabled'}
+                        label={group.disabled ? t('groups.disabled') : t('groups.enabled')}
                         size="small"
                         color={getStatusColor(group.disabled)}
                         variant="outlined"
@@ -448,7 +451,7 @@ const Groups: React.FC = () => {
                   </TableCell>
                   <TableCell align="center">
                     <Box display="flex" gap={1} justifyContent="center">
-                      <Tooltip title="Edit Group">
+                      <Tooltip title={t('groups.editGroup')}>
                         <IconButton
                           size="small"
                           onClick={() => handleEditGroup(group)}
@@ -456,7 +459,7 @@ const Groups: React.FC = () => {
                           <EditIcon />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title={group.disabled ? 'Enable Group' : 'Disable Group'}>
+                      <Tooltip title={group.disabled ? t('groups.enableGroup') : t('groups.disableGroup')}>
                         <IconButton
                           size="small"
                           onClick={() => handleToggleStatus(group)}
@@ -464,7 +467,7 @@ const Groups: React.FC = () => {
                           {group.disabled ? <EnableIcon /> : <DisableIcon />}
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Delete Group">
+                      <Tooltip title={t('groups.deleteGroup')}>
                         <IconButton
                           size="small"
                           color="error"
@@ -486,14 +489,14 @@ const Groups: React.FC = () => {
         <Box sx={{ textAlign: 'center', py: 4 }}>
           <Typography variant="h6" color="text.secondary">
             {hasActiveFilters 
-              ? 'No groups match the current filters'
-              : 'No groups found'
+              ? t('groups.noGroupsMatchFilters')
+              : t('groups.noGroupsFound')
             }
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             {hasActiveFilters 
-              ? 'Try adjusting your search criteria or clear the filters.'
-              : 'Click "Add Group" to create your first group.'
+              ? t('groups.noGroupsMatchDescription')
+              : t('groups.noGroupsDescription')
             }
           </Typography>
           {hasActiveFilters && (
@@ -502,7 +505,7 @@ const Groups: React.FC = () => {
               onClick={clearFilters}
               sx={{ mt: 2 }}
             >
-              Clear Filters
+              {t('groups.clearFilters')}
             </Button>
           )}
         </Box>
