@@ -48,9 +48,11 @@ import { useDevices, Device } from '../hooks/useDevices';
 import { useGroups, Group } from '../hooks/useGroups';
 import { usePersons, Person } from '../hooks/usePersons';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from '../hooks/useTranslation';
 
 const Users: React.FC = () => {
   const { user: currentUser } = useAuth();
+  const { t } = useTranslation();
   const {
     users,
     loading,
@@ -320,7 +322,7 @@ const Users: React.FC = () => {
     return (
       <Box p={3}>
         <Alert severity="error">
-          Access denied. Admin privileges required to manage users.
+          {t('users.accessDenied')}
         </Alert>
       </Box>
     );
@@ -330,7 +332,7 @@ const Users: React.FC = () => {
     <Box p={3}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" component="h1">
-          User Management
+          {t('users.title')}
         </Typography>
         <Button
           variant="contained"
@@ -340,7 +342,7 @@ const Users: React.FC = () => {
             setCreateDialogOpen(true);
           }}
         >
-          Add User
+          {t('users.addUser')}
         </Button>
       </Box>
 
@@ -349,7 +351,7 @@ const Users: React.FC = () => {
         <Grid container spacing={3} mb={3}>
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
-              title="Total Users"
+              title={t('users.totalUsers')}
               value={stats.total_users}
               color="#1976d2"
               icon={<PersonIcon sx={{ fontSize: 40 }} />}
@@ -357,7 +359,7 @@ const Users: React.FC = () => {
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
-              title="Active Users"
+              title={t('users.activeUsers')}
               value={stats.active_users}
               color="#2e7d32"
               icon={<PersonIcon sx={{ fontSize: 40 }} />}
@@ -365,7 +367,7 @@ const Users: React.FC = () => {
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
-              title="Administrators"
+              title={t('users.administrators')}
               value={stats.admin_users}
               color="#ed6c02"
               icon={<AdminIcon sx={{ fontSize: 40 }} />}
@@ -373,7 +375,7 @@ const Users: React.FC = () => {
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
-              title="Inactive Users"
+              title={t('users.inactiveUsers')}
               value={stats.inactive_users}
               color="#d32f2f"
               icon={<PersonIcon sx={{ fontSize: 40 }} />}
@@ -389,35 +391,35 @@ const Users: React.FC = () => {
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                label="Search users"
+                label={t('users.searchUsers')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by name or email..."
+                placeholder={t('users.searchPlaceholder')}
               />
             </Grid>
             <Grid item xs={12} md={3}>
               <FormControl fullWidth>
-                <InputLabel>Status</InputLabel>
+                <InputLabel>{t('users.status')}</InputLabel>
                 <Select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as any)}
                 >
-                  <MenuItem value="all">All</MenuItem>
-                  <MenuItem value="active">Active</MenuItem>
-                  <MenuItem value="inactive">Inactive</MenuItem>
+                  <MenuItem value="all">{t('users.all')}</MenuItem>
+                  <MenuItem value="active">{t('users.active')}</MenuItem>
+                  <MenuItem value="inactive">{t('users.inactive')}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={12} md={3}>
               <FormControl fullWidth>
-                <InputLabel>Role</InputLabel>
+                <InputLabel>{t('users.role')}</InputLabel>
                 <Select
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value as any)}
                 >
-                  <MenuItem value="all">All</MenuItem>
-                  <MenuItem value="admin">Administrator</MenuItem>
-                  <MenuItem value="user">User</MenuItem>
+                  <MenuItem value="all">{t('users.all')}</MenuItem>
+                  <MenuItem value="admin">{t('users.administrator')}</MenuItem>
+                  <MenuItem value="user">{t('users.user')}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -443,13 +445,13 @@ const Users: React.FC = () => {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Email</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Role</TableCell>
-                    <TableCell>Device Limit</TableCell>
-                    <TableCell>Created</TableCell>
-                    <TableCell align="right">Actions</TableCell>
+                    <TableCell>{t('users.name')}</TableCell>
+                    <TableCell>{t('users.email')}</TableCell>
+                    <TableCell>{t('users.status')}</TableCell>
+                    <TableCell>{t('users.role')}</TableCell>
+                    <TableCell>{t('users.deviceLimit')}</TableCell>
+                    <TableCell>{t('users.created')}</TableCell>
+                    <TableCell align="right">{t('users.actions')}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -468,26 +470,26 @@ const Users: React.FC = () => {
                       <TableCell>{user.email}</TableCell>
                       <TableCell>
                         <Chip
-                          label={user.is_active ? 'Active' : 'Inactive'}
+                          label={user.is_active ? t('users.active') : t('users.inactive')}
                           color={user.is_active ? 'success' : 'default'}
                           size="small"
                         />
                       </TableCell>
                       <TableCell>
                         <Chip
-                          label={user.is_admin ? 'Admin' : 'User'}
+                          label={user.is_admin ? t('users.administrator') : t('users.user')}
                           color={user.is_admin ? 'warning' : 'primary'}
                           size="small"
                         />
                       </TableCell>
                       <TableCell>
-                        {user.device_limit === -1 ? 'Unlimited' : user.device_limit}
+                        {user.device_limit === -1 ? t('users.unlimited') : user.device_limit}
                       </TableCell>
                       <TableCell>
                         {new Date(user.created_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell align="right">
-                        <Tooltip title="More actions">
+                        <Tooltip title={t('users.moreActions')}>
                           <IconButton
                             onClick={(e) => handleMenuClick(e, user)}
                             size="small"
@@ -515,7 +517,7 @@ const Users: React.FC = () => {
           <ListItemIcon>
             <EditIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Edit User</ListItemText>
+          <ListItemText>{t('users.editUser')}</ListItemText>
         </MenuItem>
         <MenuItem onClick={() => {
           handleViewPermissions(selectedUser!);
@@ -524,14 +526,14 @@ const Users: React.FC = () => {
           <ListItemIcon>
             <SecurityIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>View Permissions</ListItemText>
+          <ListItemText>{t('users.viewPermissions')}</ListItemText>
         </MenuItem>
         {selectedUser?.id !== currentUser?.id && (
           <MenuItem onClick={handleDeleteClick} sx={{ color: 'error.main' }}>
             <ListItemIcon>
               <DeleteIcon fontSize="small" color="error" />
             </ListItemIcon>
-            <ListItemText>Delete User</ListItemText>
+            <ListItemText>{t('users.deleteUser')}</ListItemText>
           </MenuItem>
         )}
       </Menu>
@@ -541,13 +543,13 @@ const Users: React.FC = () => {
         console.log('Create dialog closed');
         setCreateDialogOpen(false);
       }} maxWidth="md" fullWidth>
-        <DialogTitle>Create New User</DialogTitle>
+        <DialogTitle>{t('users.createNewUser')}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Name"
+                label={t('users.name')}
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
@@ -556,7 +558,7 @@ const Users: React.FC = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Email"
+                label={t('users.email')}
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -566,7 +568,7 @@ const Users: React.FC = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Password"
+                label={t('users.password')}
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
@@ -576,7 +578,7 @@ const Users: React.FC = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Phone"
+                label={t('users.phone')}
                 value={formData.phone || ''}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
@@ -584,21 +586,21 @@ const Users: React.FC = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Device Limit"
+                label={t('users.deviceLimit')}
                 type="number"
                 value={formData.device_limit}
                 onChange={(e) => setFormData({ ...formData, device_limit: parseInt(e.target.value) || -1 })}
-                helperText="-1 for unlimited"
+                helperText={t('users.deviceLimitHelper')}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="User Limit"
+                label={t('users.userLimit')}
                 type="number"
                 value={formData.user_limit}
                 onChange={(e) => setFormData({ ...formData, user_limit: parseInt(e.target.value) || 0 })}
-                helperText="0 for no management rights"
+                helperText={t('users.userLimitHelper')}
               />
             </Grid>
             <Grid item xs={12}>
@@ -609,7 +611,7 @@ const Users: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                   />
                 }
-                label="Active"
+                label={t('users.active')}
               />
             </Grid>
             <Grid item xs={12}>
@@ -620,14 +622,14 @@ const Users: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, is_admin: e.target.checked })}
                   />
                 }
-                label="Administrator"
+                label={t('users.administrator')}
               />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCreateDialogOpen(false)} disabled={actionLoading}>
-            Cancel
+            {t('users.cancel')}
           </Button>
           <Button 
             onClick={handleCreateUser} 
@@ -635,14 +637,14 @@ const Users: React.FC = () => {
             disabled={actionLoading}
             startIcon={actionLoading ? <CircularProgress size={20} /> : null}
           >
-            {actionLoading ? 'Creating...' : 'Create User'}
+            {actionLoading ? t('users.creating') : t('users.createUser')}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Edit User Dialog */}
       <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Edit User</DialogTitle>
+        <DialogTitle>{t('users.editUserTitle')}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12} sm={6}>
@@ -671,7 +673,7 @@ const Users: React.FC = () => {
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                helperText="Leave blank to keep current password"
+                helperText={t('users.passwordHelper')}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -728,7 +730,7 @@ const Users: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditDialogOpen(false)} disabled={actionLoading}>
-            Cancel
+            {t('users.cancel')}
           </Button>
           <Button 
             onClick={handleUpdateUser} 
@@ -736,14 +738,14 @@ const Users: React.FC = () => {
             disabled={actionLoading}
             startIcon={actionLoading ? <CircularProgress size={20} /> : null}
           >
-            {actionLoading ? 'Updating...' : 'Update User'}
+            {actionLoading ? t('users.updating') : t('users.updateUser')}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Permissions Dialog */}
       <Dialog open={permissionsDialogOpen} onClose={() => setPermissionsDialogOpen(false)} maxWidth="lg" fullWidth>
-        <DialogTitle>User Permissions - {selectedUser?.name}</DialogTitle>
+        <DialogTitle>{t('users.userPermissions')} - {selectedUser?.name}</DialogTitle>
         <DialogContent>
           {permissionsLoading ? (
             <Box display="flex" justifyContent="center" p={3}>
@@ -754,10 +756,10 @@ const Users: React.FC = () => {
               {/* Device Permissions */}
               <Grid item xs={12} md={4}>
                 <Typography variant="h6" gutterBottom>
-                  Device Permissions
+                  {t('users.devicePermissions')}
                 </Typography>
                 <FormControl fullWidth>
-                  <InputLabel>Select Devices</InputLabel>
+                  <InputLabel>{t('users.selectDevices')}</InputLabel>
                   <Select
                     multiple
                     value={selectedDeviceIds}
@@ -790,10 +792,10 @@ const Users: React.FC = () => {
               {/* Group Permissions */}
               <Grid item xs={12} md={4}>
                 <Typography variant="h6" gutterBottom>
-                  Group Permissions
+                  {t('users.groupPermissions')}
                 </Typography>
                 <FormControl fullWidth>
-                  <InputLabel>Select Groups</InputLabel>
+                  <InputLabel>{t('users.selectGroups')}</InputLabel>
                   <Select
                     multiple
                     value={selectedGroupIds}
@@ -826,10 +828,10 @@ const Users: React.FC = () => {
               {/* Managed Users */}
               <Grid item xs={12} md={4}>
                 <Typography variant="h6" gutterBottom>
-                  Managed Users
+                  {t('users.managedUsers')}
                 </Typography>
                 <FormControl fullWidth>
-                  <InputLabel>Select Managed Users</InputLabel>
+                  <InputLabel>{t('users.selectManagedUsers')}</InputLabel>
                   <Select
                     multiple
                     value={selectedManagedUserIds}
@@ -863,20 +865,20 @@ const Users: React.FC = () => {
               {userPermissions && (
                 <Grid item xs={12}>
                   <Typography variant="h6" gutterBottom>
-                    Current Permissions Summary
+                    {t('users.currentPermissionsSummary')}
                   </Typography>
                   <Grid container spacing={2}>
                     <Grid item xs={12} sm={4}>
                       <Card variant="outlined">
                         <CardContent>
                           <Typography variant="subtitle2" color="primary">
-                            Device Permissions
+                            {t('users.devicePermissions')}
                           </Typography>
                           <Typography variant="h4">{selectedDeviceIds.length}</Typography>
                           <Typography variant="caption">
                             {selectedDeviceIds.length > 0 
-                              ? `${selectedDeviceIds.length} device(s) selected`
-                              : 'No devices selected'
+                              ? `${selectedDeviceIds.length} ${t('users.devicesSelected')}`
+                              : t('users.noDevicesSelected')
                             }
                           </Typography>
                         </CardContent>
@@ -886,13 +888,13 @@ const Users: React.FC = () => {
                       <Card variant="outlined">
                         <CardContent>
                           <Typography variant="subtitle2" color="primary">
-                            Group Permissions
+                            {t('users.groupPermissions')}
                           </Typography>
                           <Typography variant="h4">{selectedGroupIds.length}</Typography>
                           <Typography variant="caption">
                             {selectedGroupIds.length > 0 
-                              ? `${selectedGroupIds.length} group(s) selected`
-                              : 'No groups selected'
+                              ? `${selectedGroupIds.length} ${t('users.groupsSelected')}`
+                              : t('users.noGroupsSelected')
                             }
                           </Typography>
                         </CardContent>
@@ -902,13 +904,13 @@ const Users: React.FC = () => {
                       <Card variant="outlined">
                         <CardContent>
                           <Typography variant="subtitle2" color="primary">
-                            Managed Users
+                            {t('users.managedUsers')}
                           </Typography>
                           <Typography variant="h4">{selectedManagedUserIds.length}</Typography>
                           <Typography variant="caption">
                             {selectedManagedUserIds.length > 0 
-                              ? `${selectedManagedUserIds.length} user(s) managed`
-                              : 'No users managed'
+                              ? `${selectedManagedUserIds.length} ${t('users.usersManaged')}`
+                              : t('users.noUsersManaged')
                             }
                           </Typography>
                         </CardContent>
@@ -922,7 +924,7 @@ const Users: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPermissionsDialogOpen(false)} disabled={permissionsLoading}>
-            Cancel
+            {t('users.cancel')}
           </Button>
           <Button 
             onClick={handleSavePermissions} 
@@ -930,23 +932,23 @@ const Users: React.FC = () => {
             disabled={permissionsLoading}
             startIcon={permissionsLoading ? <CircularProgress size={20} /> : null}
           >
-            {permissionsLoading ? 'Saving...' : 'Save Permissions'}
+            {permissionsLoading ? t('users.saving') : t('users.savePermissions')}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-        <DialogTitle>Delete User</DialogTitle>
+        <DialogTitle>{t('users.deleteUserTitle')}</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete user "{selectedUser?.name}"? This action cannot be undone.
+            {t('users.deleteUserMessage')} "{selectedUser?.name}"?
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setDeleteDialogOpen(false)}>{t('users.cancel')}</Button>
           <Button onClick={handleDeleteUser} color="error" variant="contained">
-            Delete
+            {t('users.delete')}
           </Button>
         </DialogActions>
       </Dialog>

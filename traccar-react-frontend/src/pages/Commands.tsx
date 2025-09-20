@@ -44,6 +44,7 @@ import { CommandDialog } from '../components/commands/CommandDialog';
 import { BulkCommandDialog } from '../components/commands/BulkCommandDialog';
 import { useCommands } from '../hooks/useCommands';
 import { useDevices } from '../hooks/useDevices';
+import { useTranslation } from '../hooks/useTranslation';
 
 // Command status types
 type CommandStatus = 'pending' | 'sent' | 'delivered' | 'failed' | 'cancelled';
@@ -65,6 +66,7 @@ interface Command {
 const Commands: React.FC = () => {
   const { commands, loading, error } = useCommands();
   const { devices } = useDevices();
+  const { t } = useTranslation();
 
   // Dialog states
   const [commandDialogOpen, setCommandDialogOpen] = useState(false);
@@ -231,17 +233,17 @@ const Commands: React.FC = () => {
 
   // Event handlers
   const handleCommandSent = (command: any) => {
-    setSnackbarMessage(`Comando ${command.command_type} enviado com sucesso!`);
+    setSnackbarMessage(t('commands.commandSentSuccess'));
     setSnackbarSeverity('success');
     setSnackbarOpen(true);
   };
 
   const handleBulkCommandsSent = (result: { created: number; failed: number }) => {
     if (result.failed === 0) {
-      setSnackbarMessage(`${result.created} comandos enviados com sucesso!`);
+      setSnackbarMessage(`${result.created} ${t('commands.commandsSentSuccess')}`);
       setSnackbarSeverity('success');
     } else {
-      setSnackbarMessage(`${result.created} comandos enviados, ${result.failed} falharam`);
+      setSnackbarMessage(`${result.created} ${t('commands.commandsSentPartial')} ${result.failed}`);
       setSnackbarSeverity('warning');
     }
     setSnackbarOpen(true);
@@ -253,7 +255,7 @@ const Commands: React.FC = () => {
 
   const handleRefresh = () => {
     // Refresh commands - would call API here
-    setSnackbarMessage('Commands refreshed');
+    setSnackbarMessage(t('commands.commandsRefreshed'));
     setSnackbarSeverity('info');
     setSnackbarOpen(true);
   };
@@ -263,7 +265,7 @@ const Commands: React.FC = () => {
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
-          Commands ({filteredCommands.length})
+          {t('commands.title')} ({filteredCommands.length})
         </Typography>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
           <Button
@@ -272,11 +274,11 @@ const Commands: React.FC = () => {
             onClick={() => setFiltersExpanded(!filtersExpanded)}
             color={hasActiveFilters ? 'primary' : 'inherit'}
           >
-            Filters {hasActiveFilters && `(${[
-              searchTerm && 'Search',
-              statusFilter !== 'all' && 'Status',
-              priorityFilter !== 'all' && 'Priority',
-              deviceFilter !== 'all' && 'Device'
+            {t('commands.filters')} {hasActiveFilters && `(${[
+              searchTerm && t('commands.searchCommands'),
+              statusFilter !== 'all' && t('commands.status'),
+              priorityFilter !== 'all' && t('commands.priority'),
+              deviceFilter !== 'all' && t('commands.device')
             ].filter(Boolean).length})`}
           </Button>
           {hasActiveFilters && (
@@ -286,7 +288,7 @@ const Commands: React.FC = () => {
               onClick={clearFilters}
               size="small"
             >
-              Clear
+              {t('commands.clear')}
             </Button>
           )}
           <Button
@@ -295,7 +297,7 @@ const Commands: React.FC = () => {
             onClick={handleRefresh}
             disabled={loading}
           >
-            Refresh
+            {t('commands.refresh')}
           </Button>
           <Button
             variant="contained"
@@ -303,7 +305,7 @@ const Commands: React.FC = () => {
             onClick={() => setCommandDialogOpen(true)}
             disabled={loading}
           >
-            Send Command
+            {t('commands.sendCommand')}
           </Button>
           <Button
             variant="outlined"
@@ -311,7 +313,7 @@ const Commands: React.FC = () => {
             onClick={() => setBulkCommandDialogOpen(true)}
             disabled={loading}
           >
-            Bulk Send
+            {t('commands.bulkSend')}
           </Button>
         </Box>
       </Box>
@@ -320,15 +322,15 @@ const Commands: React.FC = () => {
       <Collapse in={filtersExpanded}>
         <Paper sx={{ p: 3, mb: 3 }}>
           <Typography variant="h6" gutterBottom>
-            Filter Commands
+            {t('commands.filterCommands')}
           </Typography>
           <Grid container spacing={2}>
             {/* Search */}
             <Grid item xs={12} md={4} component="div">
               <TextField
                 fullWidth
-                label="Search commands"
-                placeholder="Search by command type, device, or result..."
+                label={t('commands.searchCommands')}
+                placeholder={t('commands.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 InputProps={{
@@ -345,18 +347,18 @@ const Commands: React.FC = () => {
             {/* Status Filter */}
             <Grid item xs={12} md={2} component="div">
               <FormControl fullWidth size="small">
-                <InputLabel>Status</InputLabel>
+                <InputLabel>{t('commands.status')}</InputLabel>
                 <Select
                   value={statusFilter}
-                  label="Status"
+                  label={t('commands.status')}
                   onChange={(e) => setStatusFilter(e.target.value)}
                 >
-                  <MenuItem value="all">All Status</MenuItem>
-                  <MenuItem value="pending">Pending</MenuItem>
-                  <MenuItem value="sent">Sent</MenuItem>
-                  <MenuItem value="delivered">Delivered</MenuItem>
-                  <MenuItem value="failed">Failed</MenuItem>
-                  <MenuItem value="cancelled">Cancelled</MenuItem>
+                  <MenuItem value="all">{t('commands.allStatus')}</MenuItem>
+                  <MenuItem value="pending">{t('commands.pending')}</MenuItem>
+                  <MenuItem value="sent">{t('commands.sent')}</MenuItem>
+                  <MenuItem value="delivered">{t('commands.delivered')}</MenuItem>
+                  <MenuItem value="failed">{t('commands.failed')}</MenuItem>
+                  <MenuItem value="cancelled">{t('commands.cancelled')}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -364,17 +366,17 @@ const Commands: React.FC = () => {
             {/* Priority Filter */}
             <Grid item xs={12} md={2} component="div">
               <FormControl fullWidth size="small">
-                <InputLabel>Priority</InputLabel>
+                <InputLabel>{t('commands.priority')}</InputLabel>
                 <Select
                   value={priorityFilter}
-                  label="Priority"
+                  label={t('commands.priority')}
                   onChange={(e) => setPriorityFilter(e.target.value)}
                 >
-                  <MenuItem value="all">All Priorities</MenuItem>
-                  <MenuItem value="urgent">Urgent</MenuItem>
-                  <MenuItem value="high">High</MenuItem>
-                  <MenuItem value="normal">Normal</MenuItem>
-                  <MenuItem value="low">Low</MenuItem>
+                  <MenuItem value="all">{t('commands.allPriorities')}</MenuItem>
+                  <MenuItem value="urgent">{t('commands.urgent')}</MenuItem>
+                  <MenuItem value="high">{t('commands.high')}</MenuItem>
+                  <MenuItem value="normal">{t('commands.normal')}</MenuItem>
+                  <MenuItem value="low">{t('commands.low')}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -382,13 +384,13 @@ const Commands: React.FC = () => {
             {/* Device Filter */}
             <Grid item xs={12} md={4} component="div">
               <FormControl fullWidth size="small">
-                <InputLabel>Device</InputLabel>
+                <InputLabel>{t('commands.device')}</InputLabel>
                 <Select
                   value={deviceFilter}
-                  label="Device"
+                  label={t('commands.device')}
                   onChange={(e) => setDeviceFilter(e.target.value)}
                 >
-                  <MenuItem value="all">All Devices</MenuItem>
+                  <MenuItem value="all">{t('commands.allDevices')}</MenuItem>
                   {uniqueDevices.map(device => (
                     <MenuItem key={device.id} value={device.id.toString()}>
                       {device.name}
@@ -413,7 +415,7 @@ const Commands: React.FC = () => {
                     {filteredCommands.length}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Total Commands
+                    {t('commands.totalCommands')}
                   </Typography>
                 </Box>
               </Box>
@@ -430,7 +432,7 @@ const Commands: React.FC = () => {
                     {filteredCommands.filter(c => c.status === 'delivered').length}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Delivered
+                    {t('commands.delivered')}
                   </Typography>
                 </Box>
               </Box>
@@ -447,7 +449,7 @@ const Commands: React.FC = () => {
                     {filteredCommands.filter(c => c.status === 'pending').length}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Pending
+                    {t('commands.pending')}
                   </Typography>
                 </Box>
               </Box>
@@ -464,7 +466,7 @@ const Commands: React.FC = () => {
                     {filteredCommands.filter(c => c.status === 'failed').length}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Failed
+                    {t('commands.failed')}
                   </Typography>
                 </Box>
               </Box>
@@ -489,14 +491,14 @@ const Commands: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Command Type</TableCell>
-              <TableCell>Device</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Priority</TableCell>
-              <TableCell>Created</TableCell>
-              <TableCell>Sent</TableCell>
-              <TableCell>Result</TableCell>
-              <TableCell align="right">Actions</TableCell>
+              <TableCell>{t('commands.commandType')}</TableCell>
+              <TableCell>{t('commands.device')}</TableCell>
+              <TableCell>{t('commands.status')}</TableCell>
+              <TableCell>{t('commands.priority')}</TableCell>
+              <TableCell>{t('commands.created')}</TableCell>
+              <TableCell>{t('commands.sent')}</TableCell>
+              <TableCell>{t('commands.result')}</TableCell>
+              <TableCell align="right">{t('commands.actions')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -566,7 +568,7 @@ const Commands: React.FC = () => {
                   )}
                 </TableCell>
                 <TableCell align="right">
-                  <Tooltip title="Resend Command">
+                  <Tooltip title={t('commands.resendCommand')}>
                     <IconButton
                       size="small"
                       color="primary"
@@ -580,7 +582,7 @@ const Commands: React.FC = () => {
                     </IconButton>
                   </Tooltip>
                   
-                  <Tooltip title="View Details">
+                  <Tooltip title={t('commands.viewDetails')}>
                     <IconButton
                       size="small"
                       onClick={() => {
@@ -593,7 +595,7 @@ const Commands: React.FC = () => {
                     </IconButton>
                   </Tooltip>
                   
-                  <Tooltip title="Cancel Command">
+                  <Tooltip title={t('commands.cancelCommand')}>
                     <IconButton
                       size="small"
                       color="error"
@@ -616,8 +618,8 @@ const Commands: React.FC = () => {
         <Paper sx={{ p: 4, textAlign: 'center', mt: 2 }}>
           <Typography variant="body1" color="text.secondary">
             {hasActiveFilters 
-              ? 'No commands match the current filters. Try adjusting your search criteria.'
-              : 'No commands found. Click "Send Command" to get started.'
+              ? t('commands.noCommandsMatchFilters')
+              : t('commands.noCommandsFound')
             }
           </Typography>
           {hasActiveFilters && (
@@ -626,7 +628,7 @@ const Commands: React.FC = () => {
               onClick={clearFilters}
               sx={{ mt: 2 }}
             >
-              Clear Filters
+              {t('commands.clearFilters')}
             </Button>
           )}
         </Paper>
