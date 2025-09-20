@@ -512,11 +512,15 @@ const LogsViewer: React.FC = () => {
                   <Box
                     component="pre"
                     sx={{
-                      backgroundColor: 'grey.100',
+                      backgroundColor: 'grey.900',
+                      color: 'grey.100',
                       p: 2,
                       borderRadius: 1,
                       overflow: 'auto',
-                      fontSize: '0.875rem'
+                      fontSize: '0.875rem',
+                      fontFamily: 'monospace',
+                      border: '1px solid',
+                      borderColor: 'grey.300'
                     }}
                   >
                     {JSON.stringify(selectedLog.data, null, 2)}
