@@ -80,7 +80,7 @@ const LogsViewer: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedDevice, setSelectedDevice] = useState<number | ''>('');
   const [selectedProtocol, setSelectedProtocol] = useState<string>('');
-  const [hours, setHours] = useState<number>(24);
+  const [hours, setHours] = useState<number>(168); // Default to 1 week instead of 24 hours
   const [limit, setLimit] = useState<number>(100);
   const [logType, setLogType] = useState<'combined' | 'positions' | 'events'>('combined');
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -315,7 +315,7 @@ const LogsViewer: React.FC = () => {
                 label="Horas"
                 type="number"
                 value={hours}
-                onChange={(e) => setHours(parseInt(e.target.value) || 24)}
+                onChange={(e) => setHours(parseInt(e.target.value) || 168)}
                 inputProps={{ min: 1, max: 168 }}
               />
             </Grid>
@@ -562,7 +562,7 @@ const LogsViewer: React.FC = () => {
                   label="Período Padrão (horas)"
                   type="number"
                   value={hours}
-                  onChange={(e) => setHours(parseInt(e.target.value) || 24)}
+                  onChange={(e) => setHours(parseInt(e.target.value) || 168)}
                   inputProps={{ min: 1, max: 168 }}
                   helperText="Período de tempo para buscar logs (1-168 horas)"
                 />
