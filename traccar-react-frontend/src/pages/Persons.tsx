@@ -42,6 +42,7 @@ import {
   Clear as ClearIcon,
 } from '@mui/icons-material';
 import { usePersons, Person } from '../hooks/usePersons';
+import { useTranslation } from '../hooks/useTranslation';
 import PersonDialog from '../components/common/PersonDialog';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 
@@ -56,6 +57,8 @@ const Persons: React.FC = () => {
     deletePerson,
     togglePersonStatus,
   } = usePersons();
+
+  const { t } = useTranslation();
 
   // Load persons on component mount
   useEffect(() => {
@@ -207,9 +210,9 @@ const Persons: React.FC = () => {
     if (!selectedPerson) return '';
     switch (actionType) {
       case 'delete':
-        return 'Delete Person';
+        return t('persons.deletePersonTitle');
       case 'toggle':
-        return selectedPerson.active ? 'Deactivate Person' : 'Activate Person';
+        return selectedPerson.active ? t('persons.deactivatePersonTitle') : t('persons.activatePersonTitle');
       default:
         return '';
     }
@@ -219,9 +222,9 @@ const Persons: React.FC = () => {
     if (!selectedPerson) return '';
     switch (actionType) {
       case 'delete':
-        return `Are you sure you want to delete "${selectedPerson.name}"? This action cannot be undone.`;
+        return `${t('persons.deletePersonMessage')} "${selectedPerson.name}"?`;
       case 'toggle':
-        return `Are you sure you want to ${selectedPerson.active ? 'deactivate' : 'activate'} "${selectedPerson.name}"?`;
+        return `${selectedPerson.active ? t('persons.deactivatePersonMessage') : t('persons.activatePersonMessage')} "${selectedPerson.name}"?`;
       default:
         return '';
     }
@@ -231,7 +234,7 @@ const Persons: React.FC = () => {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
-          Persons ({filteredPersons.length})
+          {t('persons.title')} ({filteredPersons.length})
         </Typography>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
           <Button
@@ -240,11 +243,11 @@ const Persons: React.FC = () => {
             onClick={() => setFiltersExpanded(!filtersExpanded)}
             color={hasActiveFilters ? 'primary' : 'inherit'}
           >
-            Filters {hasActiveFilters && `(${[
-              searchTerm && 'Search',
-              typeFilter !== 'all' && 'Type',
-              statusFilter !== 'all' && 'Status',
-              locationFilter !== 'all' && 'Location'
+            {t('persons.filters')} {hasActiveFilters && `(${[
+              searchTerm && t('persons.searchPersons'),
+              typeFilter !== 'all' && t('persons.type'),
+              statusFilter !== 'all' && t('persons.status'),
+              locationFilter !== 'all' && t('persons.location')
             ].filter(Boolean).length})`}
           </Button>
           {hasActiveFilters && (
@@ -254,7 +257,7 @@ const Persons: React.FC = () => {
               onClick={clearFilters}
               size="small"
             >
-              Clear
+              {t('persons.clear')}
             </Button>
           )}
           <Button
@@ -263,7 +266,7 @@ const Persons: React.FC = () => {
             onClick={handleAddPerson}
             disabled={loading}
           >
-            Add Person
+            {t('persons.addPerson')}
           </Button>
         </Box>
       </Box>
@@ -272,15 +275,15 @@ const Persons: React.FC = () => {
       <Collapse in={filtersExpanded}>
         <Paper sx={{ p: 3, mb: 3 }}>
           <Typography variant="h6" gutterBottom>
-            Filter Persons
+            {t('persons.filterPersons')}
           </Typography>
           <Grid container spacing={2}>
             {/* Search */}
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                label="Search persons"
-                placeholder="Search by name, email, phone, document..."
+                label={t('persons.searchPersons')}
+                placeholder={t('persons.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 InputProps={{
@@ -297,15 +300,15 @@ const Persons: React.FC = () => {
             {/* Type Filter */}
             <Grid item xs={12} md={2}>
               <FormControl fullWidth size="small">
-                <InputLabel>Type</InputLabel>
+                <InputLabel>{t('persons.type')}</InputLabel>
                 <Select
                   value={typeFilter}
-                  label="Type"
+                  label={t('persons.type')}
                   onChange={(e) => setTypeFilter(e.target.value)}
                 >
-                  <MenuItem value="all">All Types</MenuItem>
-                  <MenuItem value="physical">Physical</MenuItem>
-                  <MenuItem value="legal">Legal</MenuItem>
+                  <MenuItem value="all">{t('persons.allTypes')}</MenuItem>
+                  <MenuItem value="physical">{t('persons.physical')}</MenuItem>
+                  <MenuItem value="legal">{t('persons.legal')}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -313,15 +316,15 @@ const Persons: React.FC = () => {
             {/* Status Filter */}
             <Grid item xs={12} md={2}>
               <FormControl fullWidth size="small">
-                <InputLabel>Status</InputLabel>
+                <InputLabel>{t('persons.status')}</InputLabel>
                 <Select
                   value={statusFilter}
-                  label="Status"
+                  label={t('persons.status')}
                   onChange={(e) => setStatusFilter(e.target.value)}
                 >
-                  <MenuItem value="all">All Status</MenuItem>
-                  <MenuItem value="active">Active</MenuItem>
-                  <MenuItem value="inactive">Inactive</MenuItem>
+                  <MenuItem value="all">{t('persons.allStatus')}</MenuItem>
+                  <MenuItem value="active">{t('persons.active')}</MenuItem>
+                  <MenuItem value="inactive">{t('persons.inactive')}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -329,13 +332,13 @@ const Persons: React.FC = () => {
             {/* Location Filter */}
             <Grid item xs={12} md={4}>
               <FormControl fullWidth size="small">
-                <InputLabel>Location</InputLabel>
+                <InputLabel>{t('persons.location')}</InputLabel>
                 <Select
                   value={locationFilter}
-                  label="Location"
+                  label={t('persons.location')}
                   onChange={(e) => setLocationFilter(e.target.value)}
                 >
-                  <MenuItem value="all">All Locations</MenuItem>
+                  <MenuItem value="all">{t('persons.allLocations')}</MenuItem>
                   {uniqueLocations.map(location => (
                     <MenuItem key={location} value={location}>
                       {location}
@@ -364,15 +367,15 @@ const Persons: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Document</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell>Phone</TableCell>
-              <TableCell>Location</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Groups</TableCell>
-              <TableCell align="right">Actions</TableCell>
+              <TableCell>{t('persons.name')}</TableCell>
+              <TableCell>{t('persons.type')}</TableCell>
+              <TableCell>{t('persons.document')}</TableCell>
+              <TableCell>{t('persons.email')}</TableCell>
+              <TableCell>{t('persons.phone')}</TableCell>
+              <TableCell>{t('persons.location')}</TableCell>
+              <TableCell>{t('persons.status')}</TableCell>
+              <TableCell>{t('persons.groups')}</TableCell>
+              <TableCell align="right">{t('persons.actions')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -395,7 +398,7 @@ const Persons: React.FC = () => {
                 </TableCell>
                 <TableCell>
                   <Chip
-                    label={person.person_type === 'legal' ? 'Legal' : 'Physical'}
+                    label={person.person_type === 'legal' ? t('persons.legal') : t('persons.physical')}
                     color={getPersonTypeColor(person.person_type) as any}
                     size="small"
                   />
@@ -443,7 +446,7 @@ const Persons: React.FC = () => {
                 </TableCell>
                 <TableCell>
                   <Chip
-                    label={person.active ? 'Active' : 'Inactive'}
+                    label={person.active ? t('persons.active') : t('persons.inactive')}
                     color={getStatusColor(person.active) as any}
                     size="small"
                   />
@@ -457,7 +460,7 @@ const Persons: React.FC = () => {
                   />
                 </TableCell>
                 <TableCell align="right">
-                  <Tooltip title="Edit Person">
+                  <Tooltip title={t('persons.editPerson')}>
                     <IconButton
                       size="small"
                       onClick={() => handleEditPerson(person)}
@@ -467,7 +470,7 @@ const Persons: React.FC = () => {
                     </IconButton>
                   </Tooltip>
                   
-                  <Tooltip title={person.active ? 'Deactivate' : 'Activate'}>
+                  <Tooltip title={person.active ? t('persons.deactivate') : t('persons.activate')}>
                     <IconButton
                       size="small"
                       onClick={() => handleToggleStatus(person)}
@@ -477,7 +480,7 @@ const Persons: React.FC = () => {
                     </IconButton>
                   </Tooltip>
                   
-                  <Tooltip title="Delete Person">
+                  <Tooltip title={t('persons.deletePerson')}>
                     <IconButton
                       size="small"
                       onClick={() => handleDeletePerson(person)}
@@ -498,14 +501,14 @@ const Persons: React.FC = () => {
         <Box sx={{ textAlign: 'center', py: 4 }}>
           <Typography variant="h6" color="text.secondary">
             {hasActiveFilters 
-              ? 'No persons match the current filters'
-              : 'No persons found'
+              ? t('persons.noPersonsMatchFilters')
+              : t('persons.noPersonsFound')
             }
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             {hasActiveFilters 
-              ? 'Try adjusting your search criteria or clear the filters.'
-              : 'Click "Add Person" to create your first person record.'
+              ? t('persons.noPersonsMatchDescription')
+              : t('persons.noPersonsDescription')
             }
           </Typography>
           {hasActiveFilters && (
@@ -514,7 +517,7 @@ const Persons: React.FC = () => {
               onClick={clearFilters}
               sx={{ mt: 2 }}
             >
-              Clear Filters
+              {t('persons.clearFilters')}
             </Button>
           )}
         </Box>
@@ -525,7 +528,7 @@ const Persons: React.FC = () => {
         onClose={() => setDialogOpen(false)}
         onSave={handleSavePerson}
         person={selectedPerson}
-        title={selectedPerson ? 'Edit Person' : 'Add Person'}
+        title={selectedPerson ? t('persons.editPersonTitle') : t('persons.addPersonTitle')}
       />
 
       <ConfirmDialog
@@ -534,7 +537,7 @@ const Persons: React.FC = () => {
         onConfirm={handleConfirmAction}
         title={getConfirmDialogTitle()}
         message={getConfirmDialogMessage()}
-        confirmText={actionType === 'delete' ? 'Delete' : actionType === 'toggle' ? 'Confirm' : 'OK'}
+        confirmText={actionType === 'delete' ? t('persons.delete') : actionType === 'toggle' ? t('persons.confirm') : 'OK'}
         severity={actionType === 'delete' ? 'error' : 'warning'}
       />
     </Box>
