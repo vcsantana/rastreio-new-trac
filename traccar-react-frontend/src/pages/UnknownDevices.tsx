@@ -20,7 +20,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Grid,
   InputAdornment,
   Collapse,
   Dialog,
@@ -39,11 +38,10 @@ import {
   Link as LinkIcon,
   Add as AddIcon,
   NetworkCheck as NetworkIcon,
-  Schedule as ScheduleIcon,
-  LocationOn as LocationIcon,
 } from '@mui/icons-material';
-import { useUnknownDevices, UnknownDevice, UnknownDeviceFilters } from '../hooks/useUnknownDevices';
+import { useUnknownDevices, UnknownDevice } from '../hooks/useUnknownDevices';
 import { useDevices } from '../hooks/useDevices';
+import { useTranslation } from '../hooks/useTranslation';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 
 const UnknownDevices: React.FC = () => {
@@ -52,8 +50,6 @@ const UnknownDevices: React.FC = () => {
     stats,
     loading,
     error,
-    fetchUnknownDevices,
-    updateUnknownDevice,
     deleteUnknownDevice,
     registerUnknownDevice,
     createDeviceFromUnknown,
@@ -66,6 +62,7 @@ const UnknownDevices: React.FC = () => {
   console.log('error:', error);
 
   const { devices } = useDevices();
+  const { t } = useTranslation();
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -247,12 +244,12 @@ const UnknownDevices: React.FC = () => {
     const diffDays = Math.floor(diffHours / 24);
     
     if (diffDays > 0) {
-      return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      return `${diffDays} ${t('unknownDevices.daysAgo')}`;
     } else if (diffHours > 0) {
-      return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      return `${diffHours} ${t('unknownDevices.hoursAgo')}`;
     } else {
       const diffMinutes = Math.floor(diffMs / (1000 * 60));
-      return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
+      return `${diffMinutes} ${t('unknownDevices.minutesAgo')}`;
     }
   };
 
@@ -260,7 +257,7 @@ const UnknownDevices: React.FC = () => {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
-          Unknown Devices ({filteredDevices.length})
+          {t('unknownDevices.title')} ({filteredDevices.length})
         </Typography>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
           <Button
@@ -269,11 +266,11 @@ const UnknownDevices: React.FC = () => {
             onClick={() => setFiltersExpanded(!filtersExpanded)}
             color={hasActiveFilters ? 'primary' : 'inherit'}
           >
-            Filters {hasActiveFilters && `(${[
-              searchTerm && 'Search',
-              protocolFilter !== 'all' && 'Protocol',
-              portFilter !== 'all' && 'Port',
-              statusFilter !== 'all' && 'Status'
+            {t('unknownDevices.filters')} {hasActiveFilters && `(${[
+              searchTerm && t('unknownDevices.searchDevices'),
+              protocolFilter !== 'all' && t('unknownDevices.protocol'),
+              portFilter !== 'all' && t('unknownDevices.port'),
+              statusFilter !== 'all' && t('unknownDevices.status')
             ].filter(Boolean).length})`}
           </Button>
           {hasActiveFilters && (
@@ -283,7 +280,7 @@ const UnknownDevices: React.FC = () => {
               onClick={clearFilters}
               size="small"
             >
-              Clear
+              {t('unknownDevices.clear')}
             </Button>
           )}
         </Box>
@@ -291,155 +288,137 @@ const UnknownDevices: React.FC = () => {
 
       {/* Stats Cards */}
       {stats && (
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" color="primary">
-                  {stats.total_count}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Total Unknown Devices
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" color="warning.main">
-                  {stats.registration_stats['false'] || 0}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Unregistered
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" color="success.main">
-                  {stats.registration_stats['true'] || 0}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Registered
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Typography variant="h4" color="info.main">
-                  {Object.keys(stats.protocol_stats).length}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Protocols
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 2, mb: 3 }}>
+          <Card>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography variant="h4" color="primary">
+                {stats.total_count}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {t('unknownDevices.totalUnknownDevices')}
+              </Typography>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography variant="h4" color="warning.main">
+                {stats.registration_stats['false'] || 0}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {t('unknownDevices.unregistered')}
+              </Typography>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography variant="h4" color="success.main">
+                {stats.registration_stats['true'] || 0}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {t('unknownDevices.registered')}
+              </Typography>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography variant="h4" color="info.main">
+                {Object.keys(stats.protocol_stats).length}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {t('unknownDevices.protocols')}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Box>
       )}
 
       {/* Filters Section */}
       <Collapse in={filtersExpanded}>
         <Paper sx={{ p: 3, mb: 3 }}>
           <Typography variant="h6" gutterBottom>
-            Filter Unknown Devices
+            {t('unknownDevices.filterUnknownDevices')}
           </Typography>
-          <Grid container spacing={2}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
             {/* Search */}
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label="Search devices"
-                placeholder="Search by unique ID, protocol, or IP..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
-                size="small"
-              />
-            </Grid>
+            <TextField
+              fullWidth
+              label={t('unknownDevices.searchDevices')}
+              placeholder={t('unknownDevices.searchPlaceholder')}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+              size="small"
+            />
 
             {/* Protocol Filter */}
-            <Grid item xs={12} md={2}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Protocol</InputLabel>
-                <Select
-                  value={protocolFilter}
-                  label="Protocol"
-                  onChange={(e) => setProtocolFilter(e.target.value)}
-                >
-                  <MenuItem value="all">All Protocols</MenuItem>
-                  {uniqueProtocols.map(protocol => (
-                    <MenuItem key={protocol} value={protocol}>
-                      {protocol}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
+            <FormControl fullWidth size="small">
+              <InputLabel>{t('unknownDevices.protocol')}</InputLabel>
+              <Select
+                value={protocolFilter}
+                label={t('unknownDevices.protocol')}
+                onChange={(e) => setProtocolFilter(e.target.value)}
+              >
+                <MenuItem value="all">{t('unknownDevices.allProtocols')}</MenuItem>
+                {uniqueProtocols.map(protocol => (
+                  <MenuItem key={protocol} value={protocol}>
+                    {protocol}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
             {/* Port Filter */}
-            <Grid item xs={12} md={2}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Port</InputLabel>
-                <Select
-                  value={portFilter}
-                  label="Port"
-                  onChange={(e) => setPortFilter(e.target.value)}
-                >
-                  <MenuItem value="all">All Ports</MenuItem>
-                  {uniquePorts.map(port => (
-                    <MenuItem key={port} value={port.toString()}>
-                      {port}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
+            <FormControl fullWidth size="small">
+              <InputLabel>{t('unknownDevices.port')}</InputLabel>
+              <Select
+                value={portFilter}
+                label={t('unknownDevices.port')}
+                onChange={(e) => setPortFilter(e.target.value)}
+              >
+                <MenuItem value="all">{t('unknownDevices.allPorts')}</MenuItem>
+                {uniquePorts.map(port => (
+                  <MenuItem key={port} value={port.toString()}>
+                    {port}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
             {/* Status Filter */}
-            <Grid item xs={12} md={2}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Status</InputLabel>
-                <Select
-                  value={statusFilter}
-                  label="Status"
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <MenuItem value="all">All Status</MenuItem>
-                  <MenuItem value="unregistered">Unregistered</MenuItem>
-                  <MenuItem value="registered">Registered</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
+            <FormControl fullWidth size="small">
+              <InputLabel>{t('unknownDevices.status')}</InputLabel>
+              <Select
+                value={statusFilter}
+                label={t('unknownDevices.status')}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <MenuItem value="all">{t('unknownDevices.allStatus')}</MenuItem>
+                <MenuItem value="unregistered">{t('unknownDevices.unregistered')}</MenuItem>
+                <MenuItem value="registered">{t('unknownDevices.registered')}</MenuItem>
+              </Select>
+            </FormControl>
 
             {/* Hours Filter */}
-            <Grid item xs={12} md={2}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Time Period</InputLabel>
-                <Select
-                  value={hoursFilter}
-                  label="Time Period"
-                  onChange={(e) => setHoursFilter(Number(e.target.value))}
-                >
-                  <MenuItem value={1}>Last Hour</MenuItem>
-                  <MenuItem value={24}>Last 24 Hours</MenuItem>
-                  <MenuItem value={168}>Last Week</MenuItem>
-                  <MenuItem value={720}>Last Month</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-          </Grid>
+            <FormControl fullWidth size="small">
+              <InputLabel>{t('unknownDevices.timePeriod')}</InputLabel>
+              <Select
+                value={hoursFilter}
+                label={t('unknownDevices.timePeriod')}
+                onChange={(e) => setHoursFilter(Number(e.target.value))}
+              >
+                <MenuItem value={1}>{t('unknownDevices.lastHour')}</MenuItem>
+                <MenuItem value={24}>{t('unknownDevices.last24Hours')}</MenuItem>
+                <MenuItem value={168}>{t('unknownDevices.lastWeek')}</MenuItem>
+                <MenuItem value={720}>{t('unknownDevices.lastMonth')}</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
         </Paper>
       </Collapse>
 
@@ -459,14 +438,14 @@ const UnknownDevices: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Device ID</TableCell>
-              <TableCell>Protocol</TableCell>
-              <TableCell>Port</TableCell>
-              <TableCell>Client Address</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Connections</TableCell>
-              <TableCell>Last Seen</TableCell>
-              <TableCell align="right">Actions</TableCell>
+              <TableCell>{t('unknownDevices.deviceId')}</TableCell>
+              <TableCell>{t('unknownDevices.protocol')}</TableCell>
+              <TableCell>{t('unknownDevices.port')}</TableCell>
+              <TableCell>{t('unknownDevices.clientAddress')}</TableCell>
+              <TableCell>{t('unknownDevices.status')}</TableCell>
+              <TableCell>{t('unknownDevices.connections')}</TableCell>
+              <TableCell>{t('unknownDevices.lastSeen')}</TableCell>
+              <TableCell align="right">{t('unknownDevices.actions')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -485,7 +464,7 @@ const UnknownDevices: React.FC = () => {
                         )}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        First seen: {formatDateTime(device.first_seen)}
+                        {t('unknownDevices.firstSeen')} {formatDateTime(device.first_seen)}
                       </Typography>
                     </Box>
                   </Box>
@@ -513,7 +492,7 @@ const UnknownDevices: React.FC = () => {
                 </TableCell>
                 <TableCell>
                   <Chip
-                    label={device.is_registered ? 'Registered' : 'Unregistered'}
+                    label={device.is_registered ? t('unknownDevices.registered') : t('unknownDevices.unregistered')}
                     color={getStatusColor(device.is_registered) as any}
                     size="small"
                   />
@@ -534,7 +513,7 @@ const UnknownDevices: React.FC = () => {
                   </Box>
                 </TableCell>
                 <TableCell align="right">
-                  <Tooltip title="View Details">
+                  <Tooltip title={t('unknownDevices.viewDetails')}>
                     <IconButton
                       size="small"
                       onClick={() => handleViewDevice(device)}
@@ -545,7 +524,7 @@ const UnknownDevices: React.FC = () => {
                   
                   {!device.is_registered && (
                     <>
-                      <Tooltip title="Create Device">
+                      <Tooltip title={t('unknownDevices.createDevice')}>
                         <IconButton
                           size="small"
                           color="success"
@@ -554,7 +533,7 @@ const UnknownDevices: React.FC = () => {
                           <AddIcon />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Link to Device">
+                      <Tooltip title={t('unknownDevices.linkToDevice')}>
                         <IconButton
                           size="small"
                           color="primary"
@@ -566,7 +545,7 @@ const UnknownDevices: React.FC = () => {
                     </>
                   )}
                   
-                  <Tooltip title="Delete">
+                  <Tooltip title={t('unknownDevices.delete')}>
                     <IconButton
                       size="small"
                       color="error"
@@ -586,8 +565,8 @@ const UnknownDevices: React.FC = () => {
         <Paper sx={{ p: 4, textAlign: 'center', mt: 2 }}>
           <Typography variant="body1" color="text.secondary">
             {hasActiveFilters 
-              ? 'No unknown devices match the current filters. Try adjusting your search criteria.'
-              : 'No unknown devices found. Devices will appear here when they connect to protocol ports but are not registered in the system.'
+              ? t('unknownDevices.noDevicesMatchFilters')
+              : t('unknownDevices.noDevicesFound')
             }
           </Typography>
           {hasActiveFilters && (
@@ -596,7 +575,7 @@ const UnknownDevices: React.FC = () => {
               onClick={clearFilters}
               sx={{ mt: 2 }}
             >
-              Clear Filters
+              {t('unknownDevices.clearFilters')}
             </Button>
           )}
         </Paper>
@@ -604,80 +583,80 @@ const UnknownDevices: React.FC = () => {
 
       {/* View Device Dialog */}
       <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Unknown Device Details</DialogTitle>
+        <DialogTitle>{t('unknownDevices.unknownDeviceDetails')}</DialogTitle>
         <DialogContent>
           {selectedDevice && (
             <Box sx={{ mt: 2 }}>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" gutterBottom>Device ID</Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 2 }}>
+                <Box>
+                  <Typography variant="subtitle2" gutterBottom>{t('unknownDevices.deviceId')}</Typography>
                   <Typography variant="body2">{selectedDevice.unique_id}</Typography>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" gutterBottom>Protocol</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" gutterBottom>{t('unknownDevices.protocol')}</Typography>
                   <Typography variant="body2">{selectedDevice.protocol}</Typography>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" gutterBottom>Port</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" gutterBottom>{t('unknownDevices.port')}</Typography>
                   <Typography variant="body2">{selectedDevice.port}</Typography>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" gutterBottom>Client Address</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" gutterBottom>{t('unknownDevices.clientAddress')}</Typography>
                   <Typography variant="body2">{selectedDevice.client_address || '-'}</Typography>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" gutterBottom>First Seen</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" gutterBottom>{t('unknownDevices.firstSeen')}</Typography>
                   <Typography variant="body2">{formatDateTime(selectedDevice.first_seen)}</Typography>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" gutterBottom>Last Seen</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" gutterBottom>{t('unknownDevices.lastSeen')}</Typography>
                   <Typography variant="body2">{formatDateTime(selectedDevice.last_seen)}</Typography>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" gutterBottom>Connection Count</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" gutterBottom>{t('unknownDevices.connectionCount')}</Typography>
                   <Typography variant="body2">{selectedDevice.connection_count}</Typography>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" gutterBottom>Status</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" gutterBottom>{t('unknownDevices.status')}</Typography>
                   <Chip
-                    label={selectedDevice.is_registered ? 'Registered' : 'Unregistered'}
+                    label={selectedDevice.is_registered ? t('unknownDevices.registered') : t('unknownDevices.unregistered')}
                     color={getStatusColor(selectedDevice.is_registered) as any}
                     size="small"
                   />
-                </Grid>
+                </Box>
                 {selectedDevice.raw_data && (
-                  <Grid item xs={12}>
-                    <Typography variant="subtitle2" gutterBottom>Raw Data</Typography>
+                  <Box sx={{ gridColumn: '1 / -1' }}>
+                    <Typography variant="subtitle2" gutterBottom>{t('unknownDevices.rawData')}</Typography>
                     <Paper sx={{ p: 2, backgroundColor: 'grey.100' }}>
                       <Typography variant="body2" component="pre" sx={{ fontSize: '0.8rem' }}>
                         {selectedDevice.raw_data}
                       </Typography>
                     </Paper>
-                  </Grid>
+                  </Box>
                 )}
-              </Grid>
+              </Box>
             </Box>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setViewDialogOpen(false)}>Close</Button>
+          <Button onClick={() => setViewDialogOpen(false)}>{t('unknownDevices.close')}</Button>
         </DialogActions>
       </Dialog>
 
       {/* Link Device Dialog */}
       <Dialog open={linkDialogOpen} onClose={() => setLinkDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Link Unknown Device to Registered Device</DialogTitle>
+        <DialogTitle>{t('unknownDevices.linkUnknownDevice')}</DialogTitle>
         <DialogContent>
           {selectedDevice && (
             <Box sx={{ mt: 2 }}>
               <Typography variant="body2" gutterBottom>
-                Link unknown device <strong>{selectedDevice.unique_id}</strong> to a registered device:
+                {t('unknownDevices.linkUnknownDeviceDescription')} <strong>{selectedDevice.unique_id}</strong>:
               </Typography>
               <FormControl fullWidth sx={{ mt: 2 }}>
-                <InputLabel>Select Device</InputLabel>
+                <InputLabel>{t('unknownDevices.selectDevice')}</InputLabel>
                 <Select
                   value={selectedDeviceToLink || ''}
-                  label="Select Device"
+                  label={t('unknownDevices.selectDevice')}
                   onChange={(e) => setSelectedDeviceToLink(Number(e.target.value))}
                 >
                   {devices.length > 0 ? (
@@ -688,7 +667,7 @@ const UnknownDevices: React.FC = () => {
                     ))
                   ) : (
                     <MenuItem disabled>
-                      No devices available
+                      {t('unknownDevices.noDevicesAvailable')}
                     </MenuItem>
                   )}
                 </Select>
@@ -697,100 +676,88 @@ const UnknownDevices: React.FC = () => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setLinkDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setLinkDialogOpen(false)}>{t('unknownDevices.cancel')}</Button>
           <Button 
             onClick={handleConfirmLink} 
             variant="contained"
             disabled={!selectedDeviceToLink}
           >
-            Link Device
+            {t('unknownDevices.linkDevice')}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Create Device Dialog */}
       <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Create Device from Unknown Device</DialogTitle>
+        <DialogTitle>{t('unknownDevices.createDeviceFromUnknown')}</DialogTitle>
         <DialogContent>
           {selectedDevice && (
             <Box sx={{ mt: 2 }}>
               <Typography variant="body2" gutterBottom>
-                Create a new device from unknown device <strong>{selectedDevice.unique_id}</strong>:
+                {t('unknownDevices.createDeviceDescription')} <strong>{selectedDevice.unique_id}</strong>:
               </Typography>
-              <Grid container spacing={2} sx={{ mt: 1 }}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Device Name"
-                    value={createDeviceData.name}
-                    onChange={(e) => setCreateDeviceData(prev => ({ ...prev, name: e.target.value }))}
-                    required
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Model"
-                    value={createDeviceData.model}
-                    onChange={(e) => setCreateDeviceData(prev => ({ ...prev, model: e.target.value }))}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Contact"
-                    value={createDeviceData.contact}
-                    onChange={(e) => setCreateDeviceData(prev => ({ ...prev, contact: e.target.value }))}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Category</InputLabel>
-                    <Select
-                      value={createDeviceData.category}
-                      label="Category"
-                      onChange={(e) => setCreateDeviceData(prev => ({ ...prev, category: e.target.value }))}
-                    >
-                      <MenuItem value="car">Car</MenuItem>
-                      <MenuItem value="truck">Truck</MenuItem>
-                      <MenuItem value="motorcycle">Motorcycle</MenuItem>
-                      <MenuItem value="van">Van</MenuItem>
-                      <MenuItem value="bus">Bus</MenuItem>
-                      <MenuItem value="boat">Boat</MenuItem>
-                      <MenuItem value="iphone">iPhone</MenuItem>
-                      <MenuItem value="android">Android</MenuItem>
-                      <MenuItem value="other">Other</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Phone"
-                    value={createDeviceData.phone}
-                    onChange={(e) => setCreateDeviceData(prev => ({ ...prev, phone: e.target.value }))}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="License Plate"
-                    value={createDeviceData.license_plate}
-                    onChange={(e) => setCreateDeviceData(prev => ({ ...prev, license_plate: e.target.value }))}
-                  />
-                </Grid>
-              </Grid>
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 2, mt: 1 }}>
+                <TextField
+                  fullWidth
+                  label={t('unknownDevices.deviceName')}
+                  value={createDeviceData.name}
+                  onChange={(e) => setCreateDeviceData(prev => ({ ...prev, name: e.target.value }))}
+                  required
+                />
+                <TextField
+                  fullWidth
+                  label={t('unknownDevices.model')}
+                  value={createDeviceData.model}
+                  onChange={(e) => setCreateDeviceData(prev => ({ ...prev, model: e.target.value }))}
+                />
+                <TextField
+                  fullWidth
+                  label={t('unknownDevices.contact')}
+                  value={createDeviceData.contact}
+                  onChange={(e) => setCreateDeviceData(prev => ({ ...prev, contact: e.target.value }))}
+                />
+                <FormControl fullWidth>
+                  <InputLabel>{t('unknownDevices.category')}</InputLabel>
+                  <Select
+                    value={createDeviceData.category}
+                    label={t('unknownDevices.category')}
+                    onChange={(e) => setCreateDeviceData(prev => ({ ...prev, category: e.target.value }))}
+                  >
+                    <MenuItem value="car">{t('unknownDevices.car')}</MenuItem>
+                    <MenuItem value="truck">{t('unknownDevices.truck')}</MenuItem>
+                    <MenuItem value="motorcycle">{t('unknownDevices.motorcycle')}</MenuItem>
+                    <MenuItem value="van">{t('unknownDevices.van')}</MenuItem>
+                    <MenuItem value="bus">{t('unknownDevices.bus')}</MenuItem>
+                    <MenuItem value="boat">{t('unknownDevices.boat')}</MenuItem>
+                    <MenuItem value="iphone">{t('unknownDevices.iphone')}</MenuItem>
+                    <MenuItem value="android">{t('unknownDevices.android')}</MenuItem>
+                    <MenuItem value="other">{t('unknownDevices.other')}</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField
+                  fullWidth
+                  label={t('unknownDevices.phone')}
+                  value={createDeviceData.phone}
+                  onChange={(e) => setCreateDeviceData(prev => ({ ...prev, phone: e.target.value }))}
+                />
+                <TextField
+                  fullWidth
+                  label={t('unknownDevices.licensePlate')}
+                  value={createDeviceData.license_plate}
+                  onChange={(e) => setCreateDeviceData(prev => ({ ...prev, license_plate: e.target.value }))}
+                />
+              </Box>
             </Box>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setCreateDialogOpen(false)}>{t('unknownDevices.cancel')}</Button>
           <Button 
             onClick={handleConfirmCreate} 
             variant="contained"
             disabled={!createDeviceData.name}
           >
-            Create Device
+            {t('unknownDevices.createDevice')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -800,9 +767,9 @@ const UnknownDevices: React.FC = () => {
         open={confirmDialogOpen}
         onClose={() => setConfirmDialogOpen(false)}
         onConfirm={handleConfirmDelete}
-        title="Delete Unknown Device"
-        message={`Are you sure you want to delete the unknown device "${selectedDevice?.unique_id}"? This action cannot be undone.`}
-        confirmText="Delete"
+        title={t('unknownDevices.deleteUnknownDevice')}
+        message={`${t('unknownDevices.deleteConfirmation')} "${selectedDevice?.unique_id}"?`}
+        confirmText={t('unknownDevices.delete')}
         severity="error"
       />
     </Box>
